@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Nothing OS Light Theme Color Tokens (Frosted Glassmorphic) -->
+    <color name="nos_black">#EBEBEF</color>
+    <color name="nos_card_bg">#4DFFFFFF</color>
+    <color name="nos_card_stroke">#40000000</color>
+    <color name="nos_card_stroke_active">#80000000</color>
+    <color name="nos_red_accent">#D71920</color>
+    <color name="nos_text_primary">#121214</color>
+    <color name="nos_text_secondary">#727278</color>
+    <color name="nos_pill_bg">#4DFFFFFF</color>
+
+    <!-- Base Colors -->
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+</resources>

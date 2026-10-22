@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Nothing OS Pitch Black Color Tokens -->
+    <color name="nos_black">#000000</color>
+    <color name="nos_card_bg">#CC141418</color>
+    <color name="nos_card_stroke">#33FFFFFF</color>
+    <color name="nos_card_stroke_active">#60FFFFFF</color>
+    <color name="nos_red_accent">#D71920</color>
+    <color name="nos_text_primary">#FFFFFF</color>
+    <color name="nos_text_secondary">#8E8E93</color>
+    <color name="nos_pill_bg">#242426</color>
+
+    <!-- Base Colors -->
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+</resources>

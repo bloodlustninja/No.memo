@@ -1,0 +1,30 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base application theme enforcing Pitch Black Nothing OS aesthetic -->
+    <style name="Theme.Nomemo" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- Pitch Black Window Background -->
+        <item name="android:windowBackground">@color/nos_black</item>
+
+        <!-- Disable Material shadows & elevation overlays -->
+        <item name="elevationOverlayEnabled">false</item>
+        <item name="elevationOverlayColor">@android:color/transparent</item>
+        <item name="android:elevation">0dp</item>
+
+        <!-- Nothing OS Color Palette -->
+        <item name="colorPrimary">@color/nos_red_accent</item>
+        <item name="colorOnPrimary">@color/nos_text_primary</item>
+        <item name="colorSecondary">@color/nos_text_secondary</item>
+        <item name="colorOnSecondary">@color/nos_black</item>
+        <item name="android:colorBackground">@color/nos_black</item>
+        <item name="colorSurface">@color/nos_card_bg</item>
+        <item name="colorOnSurface">@color/nos_text_primary</item>
+        <item name="colorOnSurfaceVariant">@color/nos_text_secondary</item>
+        <item name="colorOutline">@color/nos_card_stroke</item>
+
+        <!-- Transparent system bars with light system bar icons (dark mode native) -->
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">false</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+    </style>
+</resources>

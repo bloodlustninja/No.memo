@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/nos_black"
+    android:fitsSystemWindows="true"
+    tools:context=".ui.editor.NoteEditorActivity">
+
+    <!-- Top Action Bar -->
+    <LinearLayout
+        android:id="@+id/editorTopBar"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:layout_alignParentTop="true"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="12dp">
+
+        <ImageButton
+            android:id="@+id/btnBack"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/cd_back"
+            android:padding="8dp"
+            android:src="@drawable/ic_back"
+            app:tint="@color/nos_text_primary" />
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
+        <ImageButton
+            android:id="@+id/btnUndo"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/cd_undo"
+            android:padding="9dp"
+            android:src="@drawable/ic_undo"
+            app:tint="@color/nos_text_primary" />
+
+        <ImageButton
+            android:id="@+id/btnRedo"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/cd_redo"
+            android:padding="9dp"
+            android:src="@drawable/ic_redo"
+            app:tint="@color/nos_text_primary" />
+
+        <ImageButton
+            android:id="@+id/btnPin"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginStart="4dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/cd_pin"
+            android:padding="10dp"
+            android:src="@drawable/ic_pin"
+            app:tint="@color/nos_text_primary" />
+
+        <ImageButton
+            android:id="@+id/btnDelete"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginStart="4dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/cd_delete"
+            android:padding="9dp"
+            android:src="@drawable/ic_delete"
+            app:tint="@color/nos_red_accent" />
+    </LinearLayout>
+
+    <!-- Bottom Counter Bar -->
+    <LinearLayout
+        android:id="@+id/bottomCounterBar"
+        android:layout_width="match_parent"
+        android:layout_height="40dp"
+        android:layout_alignParentBottom="true"
+        android:gravity="center_vertical|end"
+        android:paddingHorizontal="20dp">
+
+        <TextView
+            android:id="@+id/tvWordCharCount"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/font_ndot"
+            android:letterSpacing="0.05"
+            android:text="@string/initial_counter_text"
+            android:textAllCaps="true"
+            android:textColor="@color/nos_text_secondary"
+            android:textSize="12sp" />
+    </LinearLayout>
+
+    <!-- Editor Scrollable Content -->
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_above="@id/bottomCounterBar"
+        android:layout_below="@id/editorTopBar"
+        android:fillViewport="true"
+        android:paddingHorizontal="20dp"
+        android:paddingTop="12dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <!-- Title Edit -->
+            <EditText
+                android:id="@+id/etTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:autofillHints=""
+                android:background="@null"
+                android:fontFamily="@font/font_ndot"
+                android:hint="@string/title_hint"
+                android:imeOptions="actionNext"
+                android:inputType="textCapCharacters|textMultiLine"
+                android:paddingVertical="8dp"
+                android:textColor="@color/nos_text_primary"
+                android:textColorHint="@color/nos_card_stroke_active"
+                android:textSize="22sp"
+                android:textStyle="bold" />
+
+            <!-- Attached Media Bento Grid -->
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rvAttachedMedia"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:layout_marginBottom="8dp"
+                android:nestedScrollingEnabled="false"
+                android:visibility="gone"
+                tools:layoutManager="androidx.recyclerview.widget.GridLayoutManager"
+                tools:listitem="@layout/item_attached_media"
+                tools:spanCount="2"
+                tools:visibility="visible" />
+
+            <!-- Checklist Items Container -->
+            <LinearLayout
+                android:id="@+id/layoutChecklistContainer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:orientation="vertical"
+                android:visibility="gone"
+                tools:visibility="visible">
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/rvChecklist"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:nestedScrollingEnabled="false"
+                    tools:listitem="@layout/item_checklist_editor" />
+
+                <Button
+                    android:id="@+id/btnAddChecklistItem"
+                    style="@style/Widget.Material3.Button.TextButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:fontFamily="@font/font_ndot"
+                    android:text="+ ADD ITEM"
+                    android:textColor="@color/nos_red_accent"
+                    android:textSize="13sp" />
+            </LinearLayout>
+
+            <!-- Body Edit -->
+            <EditText
+                android:id="@+id/etBody"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:autofillHints=""
+                android:background="@null"
+                android:fontFamily="sans-serif"
+                android:gravity="top"
+                android:hint="@string/body_hint"
+                android:inputType="textMultiLine"
+                android:lineSpacingMultiplier="1.2"
+                android:minLines="12"
+                android:textColor="@color/nos_text_primary"
+                android:textColorHint="@color/nos_text_secondary"
+                android:textSize="15sp" />
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+
+</RelativeLayout>

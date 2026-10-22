@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingVertical="6dp">
+
+    <CheckBox
+        android:id="@+id/cbChecklist"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:button="@drawable/checkbox_selector"
+        android:contentDescription="Check item" />
+
+    <EditText
+        android:id="@+id/etChecklistText"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:layout_weight="1"
+        android:autofillHints=""
+        android:background="@null"
+        android:hint="List item"
+        android:imeOptions="actionNext"
+        android:inputType="textCapSentences"
+        android:textColor="@color/nos_text_primary"
+        android:textColorHint="@color/nos_text_secondary"
+        android:textSize="15sp"
+        tools:text="Buy coffee beans" />
+
+    <ImageButton
+        android:id="@+id/btnRemoveChecklistItem"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="Remove item"
+        android:padding="6dp"
+        android:src="@drawable/ic_close_circle"
+        app:tint="@color/nos_text_secondary" />
+
+</LinearLayout>
