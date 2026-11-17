@@ -39,6 +39,18 @@
             android:name=".ui.settings.SettingsActivity"
             android:exported="false" />
 
+        <!-- Nothing OS 5.0 Physical Glyph Matrix Bento Widget -->
+        <receiver
+            android:name=".widget.NothingBentoWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_nothing_bento_info" />
+        </receiver>
+
     </application>
 
 </manifest>

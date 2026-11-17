@@ -119,6 +119,20 @@ fun NothingVoiceOverlay(
                             )
                         }
 
+                        // Physical Nothing Glyph LED Simulator
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            NothingGlyphInterface(
+                                volume = rmsVolume,
+                                isRecording = isListening,
+                                size = 120.dp,
+                            )
+                        }
+
                         // Live Parsed Title Field
                         if (parsedNote.title.isNotBlank()) {
                             Column(modifier = Modifier.padding(horizontal = 12.dp)) {

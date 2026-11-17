@@ -64,6 +64,18 @@ An in-app voice transcription engine (`VoiceToTextManager.kt`) that operates sil
 ### 🪄 100% Pure Jetpack Compose 120 FPS Architecture
 * Migrated from hybrid ViewBinding/RecyclerView to an entirely pure Jetpack Compose pipeline (`MainNotesScreen`, `NothingNoteEditorScreen`, `NothingSettingsScreen`), eliminating bridge overhead for silky 120 FPS performance on Nothing Phone displays.
 
+### 💡 Nothing Phone Glyph LED Simulator
+* **Interactive Hardware Glyph Array (`NothingGlyphInterface`)**: Models the Camera Ring, Diagonal Slash, G-Loop, and Exclamation LEDs, pulsing in real time to audio volume (RMS dB) and playback.
+
+### ✏️ 1-Bit "Dot-Matrix Doodle" Canvas
+* **Mechanical Sketchpad (`DotMatrixDoodleSheet`)**: 1-bit monochrome and Nothing Crimson drawing canvas for handwritten notes and diagrams, with automatic PNG rasterization and direct attachment to notes.
+
+### 📱 Physical Homescreen Glyph Bento Widget
+* **AppWidget Studio (`NothingBentoWidgetProvider`)**: 4x2 / 2x2 Nothing OS bento widget for the Android homescreen featuring NDot typography, latest note previews, and 1-tap quick capture triggers.
+
+### 🧠 Smart Note Intelligence Engine
+* **Offline Local Extraction (`SmartNoteIntelligence`)**: Automatically converts natural language prose into checklists, detects urgency tags, and extracts hashtags without network latency.
+
 ---
 
 ## 🛠 Tech Stack & Dependencies

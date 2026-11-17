@@ -94,6 +94,7 @@ fun NothingNoteEditorScreen(
     var audioUri by remember { mutableStateOf(initialNote.audioUri) }
     var audioDurationMs by remember { mutableStateOf(initialNote.audioDurationMs) }
     var audioWaveform by remember { mutableStateOf(initialNote.audioWaveform) }
+    var showDoodleSheet by remember { mutableStateOf(false) }
 
     // Audio Recorder
     val audioRecorder = remember { AudioRecorderManager(context) }
@@ -660,6 +661,12 @@ fun NothingNoteEditorScreen(
                         pickImageLauncher.launch("image/*")
                     }
 
+                    // 1-Bit Dot Matrix Doodle
+                    ToolbarChip(label = "✏️ DOODLE") {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        showDoodleSheet = true
+                    }
+
                     // Audio Record Memo
                     ToolbarChip(label = if (isRecordingAudio) "⏹ STOP" else "🎙 AUDIO") {
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -704,6 +711,19 @@ fun NothingNoteEditorScreen(
                         label = "READ",
                     )
                 }
+            }
+
+            // 1-Bit Dot Matrix Doodle Sheet Overlay
+            if (showDoodleSheet) {
+                DotMatrixDoodleSheet(
+                    onSaveSketch = { sketchPath ->
+                        imageUris.add(sketchPath)
+                        showDoodleSheet = false
+                    },
+                    onDismiss = {
+                        showDoodleSheet = false
+                    },
+                )
             }
         }
     }
