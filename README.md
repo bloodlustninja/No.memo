@@ -61,6 +61,25 @@
 
 ---
 
+## 🌟 Quality of Life (QoL) Innovations
+
+1. **Zero-Latency In-Memory Filtering**: Real-time note search and category tab filtering occur completely in-memory via Kotlin `StateFlow`, eliminating SQLite query delays while typing.
+2. **Direct In-Bento Checklist Toggling**: Mark tasks complete/incomplete directly on home grid cards with a metallic chime sound—zero friction, no need to open the editor.
+3. **Double-Shake Quick Draw**: Shake the device at any time to immediately open the Flash Note scratchpad with autofocus keyboard.
+4. **Debounced Background Auto-Save**: Edits automatically persist every 350ms. Never lose a thought and never search for a manual save button.
+5. **Full Undo / Redo Stacks**: Mistakes are instantly reversible with dedicated 1-tap Undo/Redo buttons in the editor.
+6. **Time Machine Version Rollback**: Revert any note back to previous edits with a chronological snapshot scrubber.
+7. **In-Card Scrubbable Audio Waveform**: Listen and scrub through voice memos directly on the dashboard without entering the editor.
+8. **Soft-Delete Recovery Vault**: Accidental deletions can be inspected and restored with 1 tap, avoiding data loss.
+9. **Standby Desk HUD**: Place your phone on a charger or stand to turn it into an ultra-low-power OLED desk clock with live pinned notes.
+10. **1-Bit Thermal Receipt Sharing**: Export notes as high-resolution monochrome Nothing receipts with perforated margins and cryptographic checksums directly to messaging apps.
+11. **Live WYSIWYG Markdown Preview**: Toggle between raw typing and live rendered headers, code blocks, and blockquotes with 1-tap code copying.
+12. **Tactile Procedural Haptics & Sound**: 16-bit PCM procedural micro-clicks give physical hardware feedback with 0ms latency and 0 bytes APK overhead.
+13. **Accent Palette Customizer**: Choose between Nothing Crimson (`#D71921`), Solar Amber (`#FF9500`), Neon Emerald (`#00FF66`), Electric White (`#FFFFFF`), and Cyan (`#00E5FF`).
+14. **JSON / Markdown Workspace Export**: Export or back up the entire notes database with a single tap.
+
+---
+
 ## 🛠 Tech Stack & Dependencies
 
 | Category | Component / Library | Version | Description |
