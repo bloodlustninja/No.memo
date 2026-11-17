@@ -31,4 +31,5 @@ data class Note(
     val tags: List<String> = emptyList(),
     val colorAccent: String? = null,
     val revisions: List<NoteRevision> = emptyList(),
+    val reminderTimestamp: Long? = null,
 )

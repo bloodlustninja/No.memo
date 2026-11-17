@@ -29,9 +29,8 @@
 * **Zero-Loss AAC Voice Recording (`AudioRecorderManager.kt`)**: Records high-fidelity `.m4a` voice memos while capturing real-time amplitude waveforms.
 * **Interactive Waveform Player (`DotMatrixAudioPlayer.kt`)**: Scrubbable dot-matrix waveform player built directly into Bento cards with mechanical haptic toggles and timestamp telemetry (`00:14 // 00:30`).
 
-### 4. 💡 Nothing Phone Rear Glyph LED Simulator & Morse Telegraph
+### 4. 💡 Nothing Phone Rear Glyph LED Simulator
 * **Authentic Rear Glyph LED Array (`NothingGlyphInterface.kt`)**: Procedurally models the Camera Ring, Diagonal Slash, G-Loop, and Exclamation LEDs, pulsing in real time to voice RMS audio volume and playback.
-* **Morse Telegraph Studio (`NothingMorseTransmitterOverlay.kt` & `GlyphCipherManager.kt`)**: Translates any note into Morse signals, pulses the rear Glyph LED strips in real time, and synthesizes 880Hz telegraph audio tones. Includes an interactive mechanical DOT/DASH telegraph keyer.
 
 ### 5. 🔒 Glyph Biometric Hardware Vault
 * **Optical Fingerprint Scanner (`NothingBiometricLockOverlay.kt`)**: Dot-Matrix concentric optical fingerprint sensor with dynamic touch-and-hold radial fill, mechanical tumbler release sounds, and 4-digit PIN fallback.
@@ -50,14 +49,20 @@
 * **Pomodoro Studio (`NothingFocusTimerScreen.kt`)**: 48-dot procedural circular glyph progress ring with kinetic countdown timer.
 * **Archive & Recovery Vault (`NothingArchiveVaultScreen.kt`)**: Dedicated recovery space for archived and soft-deleted notes with 1-tap restore chimes and permanent shredding.
 
-### 10. ❖ Standby Ambient Desk HUD Mode
-* **Low-Power AOD Mode (`NothingAmbientDeskScreen.kt`)**: Monumental NDot digital clock (`HH:mm:ss`), ambient breathing Glyph LED orbit ring, and live pinned notes ticker tape in pure pitch-black OLED (`#000000`).
+### 10. ⏰ Scheduled Reminders & Notification Alarms
+* **System Reminders Engine (`NothingReminderManager.kt` & `NothingReminderDialog.kt`)**: Set timed reminders with quick presets (+1h, Tonight, Tomorrow morning, Custom) that trigger high-priority Nothing OS heads-up system notifications with action buttons.
 
-### 11. 🔊 Procedural Mechanical Audio Feedback Engine
+### 11. ☑️ Multi-Select Batch Actions (Bulk Selection Mode)
+* **Bulk Management**: Long press or tap the selection mode icon to batch-select multiple notes. Bulk Pin/Unpin, Lock/Unlock, Archive to Vault, or Shred with a single tap.
+
+### 12. 🔊 Procedural Mechanical Audio Feedback Engine
 * **Zero-Asset PCM Audio Synthesizer (`NothingAudioFeedback.kt`)**: Procedurally generates mechanical shutter clicks, metallic checkbox chimes, and tumbler bolt snaps directly via 16-bit PCM AudioTrack buffers with 0ms latency and 0 bytes APK overhead.
 
-### 12. 📱 Physical Homescreen Glyph Bento Widget
+### 13. 📱 Physical Homescreen Glyph Bento Widget
 * **AppWidget Studio (`NothingBentoWidgetProvider.kt`)**: 4x2 / 2x2 Nothing OS bento widget for the Android homescreen featuring NDot typography, latest note previews, and 1-tap quick capture triggers.
+
+### 14. ✨ Smart Note Text Cleaner & Formatter
+* **One-Tap Formatter (`SmartNoteIntelligence.kt`)**: Automatic text cleanup that trims excess whitespace, turns bullet points into interactive checklist items, and normalizes messy braindumps.
 
 ---
 
@@ -71,12 +76,14 @@
 6. **Time Machine Version Rollback**: Revert any note back to previous edits with a chronological snapshot scrubber.
 7. **In-Card Scrubbable Audio Waveform**: Listen and scrub through voice memos directly on the dashboard without entering the editor.
 8. **Soft-Delete Recovery Vault**: Accidental deletions can be inspected and restored with 1 tap, avoiding data loss.
-9. **Standby Desk HUD**: Place your phone on a charger or stand to turn it into an ultra-low-power OLED desk clock with live pinned notes.
-10. **1-Bit Thermal Receipt Sharing**: Export notes as high-resolution monochrome Nothing receipts with perforated margins and cryptographic checksums directly to messaging apps.
-11. **Live WYSIWYG Markdown Preview**: Toggle between raw typing and live rendered headers, code blocks, and blockquotes with 1-tap code copying.
-12. **Tactile Procedural Haptics & Sound**: 16-bit PCM procedural micro-clicks give physical hardware feedback with 0ms latency and 0 bytes APK overhead.
-13. **Accent Palette Customizer**: Choose between Nothing Crimson (`#D71921`), Solar Amber (`#FF9500`), Neon Emerald (`#00FF66`), Electric White (`#FFFFFF`), and Cyan (`#00E5FF`).
-14. **JSON / Markdown Workspace Export**: Export or back up the entire notes database with a single tap.
+9. **Scheduled System Reminders**: Schedule timed alarms with quick presets (+1h, Tonight, Tomorrow) that trigger native Android notifications.
+10. **Multi-Select Batch Operations**: Select multiple notes at once to batch Pin, Lock, Vault, or Shred.
+11. **1-Bit Thermal Receipt Sharing**: Export notes as high-resolution monochrome Nothing receipts with perforated margins and cryptographic checksums directly to messaging apps.
+12. **Live WYSIWYG Markdown Preview**: Toggle between raw typing and live rendered headers, code blocks, and blockquotes with 1-tap code copying.
+13. **Smart Note Text Cleanup**: 1-tap formatter that trims extra spacing, converts bullet points into interactive checklist items, and normalizes messy braindumps.
+14. **Tactile Procedural Haptics & Sound**: 16-bit PCM procedural micro-clicks give physical hardware feedback with 0ms latency and 0 bytes APK overhead.
+15. **Accent Palette Customizer**: Choose between Nothing Crimson (`#D71921`), Solar Amber (`#FF9500`), Neon Emerald (`#00FF66`), Electric White (`#FFFFFF`), and Cyan (`#00E5FF`).
+16. **JSON / Markdown Workspace Export**: Export or back up the entire notes database with a single tap.
 
 ---
 
@@ -107,7 +114,7 @@ graph TD
     C --> F[120 FPS Compose Bento Grid]
     F --> G[FrostedBentoCard & BentoCardComposable]
     B --> H[NothingBiometricLockOverlay]
-    B --> I[NothingAmbientDeskScreen]
+    B --> I[NothingReminderDialog]
     B --> J[BentoKnowledgeGraphScreen]
     B --> K[FlashNoteOverlay]
     B --> L[NothingFocusTimerScreen]
@@ -122,30 +129,32 @@ graph TD
 ```
 com.example.nomemo
 ├── data
-│   ├── db           # AppDatabase (v3), NoteDao, Converters
+│   ├── db           # AppDatabase (v4), NoteDao, Converters
 │   ├── entity       # Room Note Entity & NoteType Constants
 │   ├── model        # ChecklistItem, NoteRevision
 │   ├── pref         # PreferencesManager (Pitch Black, Glassmorphism, Haptics, Accent)
 │   └── repository   # NoteRepository
 ├── export
 │   └── NothingReceiptExporter.kt   # 1-Bit Thermal Receipt & Tape Exporter
+├── reminder
+│   ├── NothingReminderManager.kt   # Native Android AlarmManager Scheduler
+│   └── ReminderReceiver.kt         # Heads-Up System Notification Receiver
 ├── sensor
 │   └── NothingShakeDetector.kt     # Hardware Accelerometer Gesture Engine
 ├── ui
 │   ├── anim         # NothingAudioFeedback (Procedural PCM Audio Synthesizer)
 │   ├── compose      # MainNotesScreen, FrostedBentoCard, NothingNoteEditorScreen,
 │   │                # BentoKnowledgeGraphScreen, NothingMarkdownRenderer,
-│   │                # NothingBiometricLockOverlay, NothingAmbientDeskScreen,
-│   │                # NothingMorseTransmitterOverlay, NothingVersionHistorySheet,
-│   │                # NothingFocusTimerScreen, NothingArchiveVaultScreen,
-│   │                # DotMatrixAudioPlayer, DotMatrixDoodleSheet, FlashNoteOverlay,
+│   │                # NothingBiometricLockOverlay, NothingReminderDialog,
+│   │                # NothingVersionHistorySheet, NothingFocusTimerScreen,
+│   │                # NothingArchiveVaultScreen, DotMatrixAudioPlayer,
+│   │                # DotMatrixDoodleSheet, FlashNoteOverlay,
 │   │                # NothingGlyphInterface, KineticTypography
 │   ├── editor       # NoteEditorActivity (Pure Compose Host)
 │   ├── settings     # SettingsActivity & NothingSettingsScreen
 │   └── viewmodel    # MainViewModel (0ms In-Memory Pre-Filtering)
 ├── voice
 │   ├── AudioRecorderManager.kt     # AAC M4A Recorder & Waveform Engine
-│   ├── GlyphCipherManager.kt       # Morse Code & Telegraph Tone Synthesizer
 │   ├── VoiceToTextManager.kt       # Persistent Silent Speech Recognizer
 │   └── VoiceParser.kt              # NLP Keyword Title & Body Parser
 ├── widget

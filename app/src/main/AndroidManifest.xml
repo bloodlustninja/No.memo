@@ -3,6 +3,8 @@
 
     <!-- Microphone permission for Silent Background Voice Engine -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 
     <!-- Queries package declaration for SpeechRecognitionService on Android 11+ (API 30+) -->
     <queries>
@@ -48,6 +50,10 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
         </provider>
+
+        <receiver
+            android:name=".reminder.ReminderReceiver"
+            android:exported="false" />
 
         <!-- Nothing OS 5.0 Physical Glyph Matrix Bento Widget -->
         <receiver

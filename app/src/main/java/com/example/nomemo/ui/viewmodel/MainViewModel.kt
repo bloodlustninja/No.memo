@@ -136,4 +136,36 @@ class MainViewModel @JvmOverloads constructor(
             repository.toggleChecklistItem(note, itemId)
         }
     }
+
+    fun bulkArchive(notes: List<Note>, isArchived: Boolean = true) {
+        viewModelScope.launch {
+            notes.forEach { note ->
+                repository.updateNote(note.copy(isArchived = isArchived))
+            }
+        }
+    }
+
+    fun bulkDelete(notes: List<Note>) {
+        viewModelScope.launch {
+            notes.forEach { note ->
+                repository.deleteNote(note)
+            }
+        }
+    }
+
+    fun bulkTogglePin(notes: List<Note>, pin: Boolean) {
+        viewModelScope.launch {
+            notes.forEach { note ->
+                repository.updateNote(note.copy(isPinned = pin))
+            }
+        }
+    }
+
+    fun bulkToggleLock(notes: List<Note>, lock: Boolean) {
+        viewModelScope.launch {
+            notes.forEach { note ->
+                repository.updateNote(note.copy(isLocked = lock))
+            }
+        }
+    }
 }

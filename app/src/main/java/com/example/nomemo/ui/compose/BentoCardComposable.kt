@@ -54,6 +54,7 @@ import java.util.Locale
 fun BentoCardComposable(
     note: Note,
     isSelected: Boolean = false,
+    isSelectionMode: Boolean = false,
     onClick: () -> Unit,
     onLongClick: () -> Unit = {},
     onChecklistToggle: ((itemId: String) -> Unit)? = null,
@@ -118,25 +119,44 @@ fun BentoCardComposable(
                     )
 
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        if (note.isLocked) {
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = if (isUnlockedLocally) "🔓" else "🔒",
-                                fontSize = 11.sp,
-                                modifier = Modifier.clickable {
-                                    com.example.nomemo.ui.anim.NothingAudioFeedback.playLockBolt()
-                                    onLockToggle?.invoke()
-                                },
-                            )
-                        }
-                        if (note.isPinned) {
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Icon(
-                                painter = painterResource(id = R.drawable.ic_pin),
-                                contentDescription = "Pinned",
-                                tint = NothingThemeColors.accentCrimson,
-                                modifier = Modifier.size(13.dp),
-                            )
+                        if (isSelectionMode) {
+                            Box(
+                                modifier = Modifier
+                                    .size(18.dp)
+                                    .clip(CircleShape)
+                                    .background(if (isSelected) NothingThemeColors.accentCrimson else Color(0x33FFFFFF))
+                                    .border(1.2.dp, if (isSelected) Color.White else Color(0x66FFFFFF), CircleShape),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                if (isSelected) {
+                                    Text("✓", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        } else {
+                            if (note.reminderTimestamp != null && note.reminderTimestamp > System.currentTimeMillis()) {
+                                Text("⏰", fontSize = 10.sp)
+                                Spacer(modifier = Modifier.width(4.dp))
+                            }
+                            if (note.isLocked) {
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = if (isUnlockedLocally) "🔓" else "🔒",
+                                    fontSize = 11.sp,
+                                    modifier = Modifier.clickable {
+                                        com.example.nomemo.ui.anim.NothingAudioFeedback.playLockBolt()
+                                        onLockToggle?.invoke()
+                                    },
+                                )
+                            }
+                            if (note.isPinned) {
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_pin),
+                                    contentDescription = "Pinned",
+                                    tint = NothingThemeColors.accentCrimson,
+                                    modifier = Modifier.size(13.dp),
+                                )
+                            }
                         }
                     }
                 }

@@ -61,11 +61,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.nomemo.R
+import com.example.nomemo.data.SmartNoteIntelligence
 import com.example.nomemo.data.entity.Note
 import com.example.nomemo.data.entity.NoteType
 import com.example.nomemo.data.model.ChecklistItem
 import com.example.nomemo.data.model.NoteRevision
 import com.example.nomemo.export.NothingReceiptExporter
+import com.example.nomemo.reminder.NothingReminderManager
 import com.example.nomemo.voice.AudioRecorderManager
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -98,7 +100,8 @@ fun NothingNoteEditorScreen(
     var audioWaveform by remember { mutableStateOf(initialNote.audioWaveform) }
     var showDoodleSheet by remember { mutableStateOf(false) }
     var isMarkdownPreviewMode by remember { mutableStateOf(false) }
-    var showMorseStudio by remember { mutableStateOf(false) }
+    var showReminderDialog by remember { mutableStateOf(false) }
+    var reminderTimestamp by remember { mutableStateOf(initialNote.reminderTimestamp) }
     var showHistorySheet by remember { mutableStateOf(false) }
     val revisions = remember { mutableStateListOf<NoteRevision>().apply { addAll(initialNote.revisions) } }
 
@@ -148,6 +151,7 @@ fun NothingNoteEditorScreen(
             audioWaveform = audioWaveform,
             tags = extractedTags,
             revisions = revisions.toList(),
+            reminderTimestamp = reminderTimestamp,
             timestamp = System.currentTimeMillis(),
         )
         onSaveNote(updatedNote)
@@ -325,26 +329,23 @@ fun NothingNoteEditorScreen(
 
                         Spacer(modifier = Modifier.width(4.dp))
 
-                        // Morse Cipher Transmitter
+                        // Reminder Schedule Button
                         Box(
                             modifier = Modifier
                                 .size(32.dp)
                                 .clip(CircleShape)
-                                .background(NothingThemeColors.tabTrackBackground)
-                                .border(1.dp, NothingThemeColors.tabTrackBorder, CircleShape)
+                                .background(if (reminderTimestamp != null) NothingThemeColors.accentCrimson.copy(alpha = 0.25f) else NothingThemeColors.tabTrackBackground)
+                                .border(1.dp, if (reminderTimestamp != null) NothingThemeColors.accentCrimson else NothingThemeColors.tabTrackBorder, CircleShape)
                                 .clickable {
                                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                     com.example.nomemo.ui.anim.NothingAudioFeedback.playTactileClick()
-                                    showMorseStudio = true
+                                    showReminderDialog = true
                                 },
                             contentAlignment = Alignment.Center,
                         ) {
                             Text(
-                                text = "•—",
-                                fontFamily = FontFamily.Monospace,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White,
+                                text = "⏰",
+                                fontSize = 12.sp,
                             )
                         }
 
@@ -800,6 +801,17 @@ fun NothingNoteEditorScreen(
                             audioRecorder.startRecording()
                         }
                     }
+
+                    ToolbarChip(label = "✨ TIDY") {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        val (cleanedBody, extractedChecklist) = SmartNoteIntelligence.formatAndTidy(body)
+                        body = cleanedBody
+                        if (extractedChecklist.isNotEmpty()) {
+                            checklistItems.addAll(extractedChecklist)
+                            noteType = NoteType.CHECKLIST
+                        }
+                        com.example.nomemo.ui.anim.NothingAudioFeedback.playCheckChime()
+                    }
                 }
 
                 // Bottom Real-Time Telemetry HUD
@@ -844,11 +856,19 @@ fun NothingNoteEditorScreen(
                 )
             }
 
-            // Morse Cipher Studio Overlay
-            NothingMorseTransmitterOverlay(
-                isVisible = showMorseStudio,
-                initialText = "$title $body",
-                onDismiss = { showMorseStudio = false },
+            // Scheduled Reminder Dialog
+            NothingReminderDialog(
+                isVisible = showReminderDialog,
+                currentReminder = reminderTimestamp,
+                onSetReminder = { timestamp ->
+                    reminderTimestamp = timestamp
+                    NothingReminderManager.setReminder(context, initialNote.id, title, body, timestamp)
+                },
+                onClearReminder = {
+                    reminderTimestamp = null
+                    NothingReminderManager.cancelReminder(context, initialNote.id)
+                },
+                onDismiss = { showReminderDialog = false },
             )
 
             // Time Machine Version History Drawer

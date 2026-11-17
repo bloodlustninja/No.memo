@@ -84,6 +84,10 @@ fun MainNotesScreen(
     onSearchQueryChange: (String) -> Unit = {},
     onRestoreNote: (Note) -> Unit = {},
     onPermanentDelete: (Note) -> Unit = {},
+    onBulkArchive: ((List<Note>) -> Unit)? = null,
+    onBulkDelete: ((List<Note>) -> Unit)? = null,
+    onBulkPin: ((List<Note>, Boolean) -> Unit)? = null,
+    onBulkLock: ((List<Note>, Boolean) -> Unit)? = null,
     onSettingsClick: () -> Unit,
     onDockTextClick: () -> Unit,
     onDockChecklistClick: () -> Unit,
@@ -108,7 +112,8 @@ fun MainNotesScreen(
     var showFocusTimer by remember { mutableStateOf(false) }
     var showArchiveVault by remember { mutableStateOf(false) }
     var showKnowledgeGraph by remember { mutableStateOf(false) }
-    var showAmbientDesk by remember { mutableStateOf(false) }
+    var isBatchMode by remember { mutableStateOf(false) }
+    val selectedNoteIds = remember { androidx.compose.runtime.mutableStateListOf<Long>() }
     var lockedNoteForAuth by remember { mutableStateOf<com.example.nomemo.data.entity.Note?>(null) }
 
     DisposableEffect(Unit) {
@@ -149,12 +154,12 @@ fun MainNotesScreen(
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         KineticDotMatrixText(
-                            text = "NO.MEMO",
+                            text = if (isBatchMode) "${selectedNoteIds.size} SELECTED" else "NO.MEMO",
                             fontFamily = FontFamily.Monospace,
-                            fontSize = 22.sp,
+                            fontSize = if (isBatchMode) 17.sp else 22.sp,
                             fontWeight = FontWeight.Bold,
-                            color = NothingThemeColors.textPrimary,
-                            letterSpacing = 2.sp,
+                            color = if (isBatchMode) NothingThemeColors.accentCrimson else NothingThemeColors.textPrimary,
+                            letterSpacing = if (isBatchMode) 1.sp else 2.sp,
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Box(
@@ -163,6 +168,32 @@ fun MainNotesScreen(
                                 .clip(CircleShape)
                                 .background(NothingThemeColors.accentCrimson),
                         )
+                        if (isBatchMode) {
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(NothingThemeColors.tabTrackBackground)
+                                    .clickable {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        if (selectedNoteIds.size == notesList.size) {
+                                            selectedNoteIds.clear()
+                                        } else {
+                                            selectedNoteIds.clear()
+                                            selectedNoteIds.addAll(notesList.map { it.id })
+                                        }
+                                    }
+                                    .padding(horizontal = 8.dp, vertical = 3.dp),
+                            ) {
+                                Text(
+                                    text = if (selectedNoteIds.size == notesList.size) "NONE" else "ALL",
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = NothingThemeColors.textSecondary,
+                                )
+                            }
+                        }
                     }
 
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -243,7 +274,7 @@ fun MainNotesScreen(
 
                         Spacer(modifier = Modifier.width(6.dp))
 
-                        // Desk Ambient Mode Button
+                        // Batch Select Mode Button
                         Box(
                             modifier = Modifier
                                 .size(38.dp)
@@ -251,11 +282,16 @@ fun MainNotesScreen(
                                 .clickable {
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                     com.example.nomemo.ui.anim.NothingAudioFeedback.playTactileClick()
-                                    showAmbientDesk = true
+                                    isBatchMode = !isBatchMode
+                                    if (!isBatchMode) selectedNoteIds.clear()
                                 },
                             contentAlignment = Alignment.Center,
                         ) {
-                            Text("❖", fontSize = 17.sp, color = NothingThemeColors.textPrimary)
+                            Text(
+                                text = "☑",
+                                fontSize = 16.sp,
+                                color = if (isBatchMode) NothingThemeColors.accentCrimson else NothingThemeColors.textPrimary,
+                            )
                         }
 
                         Spacer(modifier = Modifier.width(6.dp))
@@ -463,9 +499,18 @@ fun MainNotesScreen(
                                     ) {
                                         BentoCardComposable(
                                             note = note,
-                                            isSelected = false,
+                                            isSelected = selectedNoteIds.contains(note.id),
+                                            isSelectionMode = isBatchMode,
                                             onClick = {
-                                                if (note.isLocked) {
+                                                if (isBatchMode) {
+                                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                                    com.example.nomemo.ui.anim.NothingAudioFeedback.playTactileClick()
+                                                    if (selectedNoteIds.contains(note.id)) {
+                                                        selectedNoteIds.remove(note.id)
+                                                    } else {
+                                                        selectedNoteIds.add(note.id)
+                                                    }
+                                                } else if (note.isLocked) {
                                                     com.example.nomemo.ui.anim.NothingAudioFeedback.playTactileClick()
                                                     lockedNoteForAuth = note
                                                 } else {
@@ -474,7 +519,13 @@ fun MainNotesScreen(
                                             },
                                             onLongClick = {
                                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                onLockToggle(note)
+                                                com.example.nomemo.ui.anim.NothingAudioFeedback.playTactileClick()
+                                                if (!isBatchMode) {
+                                                    isBatchMode = true
+                                                    selectedNoteIds.add(note.id)
+                                                } else {
+                                                    onLockToggle(note)
+                                                }
                                             },
                                             onChecklistToggle = { itemId ->
                                                 onChecklistToggle(note, itemId)
@@ -532,31 +583,101 @@ fun MainNotesScreen(
                     .navigationBarsPadding()
                     .padding(bottom = 16.dp),
             ) {
-                FloatingCapsuleDockView(
-                    onTextClick = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        showFlashNote = true
-                    },
-                    onChecklistClick = onDockChecklistClick,
-                    onImageClick = onDockImageClick,
-                    onVoiceClick = {
-                        if (isListening) {
-                            voiceManager.stopListening()
-                        } else {
-                            val hasPermission = ContextCompat.checkSelfPermission(
-                                context,
-                                Manifest.permission.RECORD_AUDIO,
-                            ) == PackageManager.PERMISSION_GRANTED
-
-                            if (hasPermission) {
-                                voiceManager.startListening()
+                if (isBatchMode) {
+                    val selectedNotes = remember(selectedNoteIds.toList(), notesList) {
+                        notesList.filter { selectedNoteIds.contains(it.id) }
+                    }
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(28.dp))
+                            .background(Color(0xE6141418))
+                            .border(1.2.dp, Color(0x33FFFFFF), RoundedCornerShape(28.dp))
+                            .padding(horizontal = 18.dp, vertical = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = "📌 PIN",
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (selectedNotes.isNotEmpty()) Color.White else Color.Gray,
+                            modifier = Modifier.clickable(enabled = selectedNotes.isNotEmpty()) {
+                                com.example.nomemo.ui.anim.NothingAudioFeedback.playTactileClick()
+                                val anyUnpinned = selectedNotes.any { !it.isPinned }
+                                onBulkPin?.invoke(selectedNotes, anyUnpinned)
+                                isBatchMode = false
+                                selectedNoteIds.clear()
+                            },
+                        )
+                        Text(
+                            text = "🔒 LOCK",
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (selectedNotes.isNotEmpty()) Color.White else Color.Gray,
+                            modifier = Modifier.clickable(enabled = selectedNotes.isNotEmpty()) {
+                                com.example.nomemo.ui.anim.NothingAudioFeedback.playLockToggle(true)
+                                val anyUnlocked = selectedNotes.any { !it.isLocked }
+                                onBulkLock?.invoke(selectedNotes, anyUnlocked)
+                                isBatchMode = false
+                                selectedNoteIds.clear()
+                            },
+                        )
+                        Text(
+                            text = "📦 VAULT",
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (selectedNotes.isNotEmpty()) Color.White else Color.Gray,
+                            modifier = Modifier.clickable(enabled = selectedNotes.isNotEmpty()) {
+                                com.example.nomemo.ui.anim.NothingAudioFeedback.playTactileClick()
+                                onBulkArchive?.invoke(selectedNotes)
+                                isBatchMode = false
+                                selectedNoteIds.clear()
+                            },
+                        )
+                        Text(
+                            text = "🗑 SHRED",
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (selectedNotes.isNotEmpty()) NothingThemeColors.accentCrimson else Color.Gray,
+                            modifier = Modifier.clickable(enabled = selectedNotes.isNotEmpty()) {
+                                com.example.nomemo.ui.anim.NothingAudioFeedback.playTactileClick()
+                                onBulkDelete?.invoke(selectedNotes)
+                                isBatchMode = false
+                                selectedNoteIds.clear()
+                            },
+                        )
+                    }
+                } else {
+                    FloatingCapsuleDockView(
+                        onTextClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            showFlashNote = true
+                        },
+                        onChecklistClick = onDockChecklistClick,
+                        onImageClick = onDockImageClick,
+                        onVoiceClick = {
+                            if (isListening) {
+                                voiceManager.stopListening()
                             } else {
-                                permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                                val hasPermission = ContextCompat.checkSelfPermission(
+                                    context,
+                                    Manifest.permission.RECORD_AUDIO,
+                                ) == PackageManager.PERMISSION_GRANTED
+
+                                if (hasPermission) {
+                                    voiceManager.startListening()
+                                } else {
+                                    permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                                }
                             }
-                        }
-                        onDockVoiceClick()
-                    },
-                )
+                            onDockVoiceClick()
+                        },
+                    )
+                }
             }
 
             // Focus Timer Pomodoro Studio Overlay
@@ -595,13 +716,6 @@ fun MainNotesScreen(
                     onBackClick = { showKnowledgeGraph = false },
                 )
             }
-
-            // Standby Ambient Desk HUD Screen
-            NothingAmbientDeskScreen(
-                isVisible = showAmbientDesk,
-                pinnedNotes = notesList.filter { it.isPinned },
-                onExit = { showAmbientDesk = false },
-            )
 
             // Physical Biometric & Glyph Hardware Lock Overlay
             NothingBiometricLockOverlay(

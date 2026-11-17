@@ -111,6 +111,24 @@ class MainActivity : AppCompatActivity() {
                     viewModel.insertNote(note)
                     Toast.makeText(this, "NOTE PERSISTED", Toast.LENGTH_SHORT).show()
                 },
+                onBulkArchive = { notesToArchive ->
+                    viewModel.bulkArchive(notesToArchive)
+                    Toast.makeText(this, "${notesToArchive.size} NOTES ARCHIVED", Toast.LENGTH_SHORT).show()
+                },
+                onBulkDelete = { notesToDelete ->
+                    viewModel.bulkDelete(notesToDelete)
+                    Toast.makeText(this, "${notesToDelete.size} NOTES SHREDDED", Toast.LENGTH_SHORT).show()
+                },
+                onBulkPin = { notesToPin, pin ->
+                    viewModel.bulkTogglePin(notesToPin, pin)
+                    val msg = if (pin) "${notesToPin.size} NOTES PINNED" else "${notesToPin.size} NOTES UNPINNED"
+                    Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
+                },
+                onBulkLock = { notesToLock, lock ->
+                    viewModel.bulkToggleLock(notesToLock, lock)
+                    val msg = if (lock) "${notesToLock.size} NOTES LOCKED" else "${notesToLock.size} NOTES UNLOCKED"
+                    Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
+                },
                 isDarkTheme = prefsManager.isPitchBlackEnabled,
             )
         }

@@ -82,4 +82,37 @@ object SmartNoteIntelligence {
             cleanBody = body,
         )
     }
+
+    /**
+     * Tidies up messy braindumps, trims excess whitespace, and extracts bullet lists into checklist items.
+     */
+    fun formatAndTidy(body: String): Pair<String, List<ChecklistItem>> {
+        val lines = body.lines()
+        val nonBulletLines = mutableListOf<String>()
+        val checklist = mutableListOf<ChecklistItem>()
+
+        for (line in lines) {
+            val trimmed = line.trim()
+            if (trimmed.startsWith("- [ ]") || trimmed.startsWith("- [x]")) {
+                val isChecked = trimmed.startsWith("- [x]")
+                val text = trimmed.substring(5).trim()
+                if (text.isNotBlank()) checklist.add(ChecklistItem(text = text, isChecked = isChecked))
+            } else if (trimmed.startsWith("- ") || trimmed.startsWith("* ") || trimmed.startsWith("• ")) {
+                val text = trimmed.substring(2).trim()
+                if (text.isNotBlank()) checklist.add(ChecklistItem(text = text))
+            } else if (trimmed.matches("^\\d+\\.\\s+.*".toRegex())) {
+                val text = trimmed.replaceFirst("^\\d+\\.\\s+".toRegex(), "").trim()
+                if (text.isNotBlank()) checklist.add(ChecklistItem(text = text))
+            } else {
+                nonBulletLines.add(line)
+            }
+        }
+
+        // Collapse 3+ consecutive newlines down to 2
+        val cleanedBody = nonBulletLines.joinToString("\n")
+            .replace("(?m)\\n{3,}".toRegex(), "\n\n")
+            .trim()
+
+        return Pair(cleanedBody, checklist)
+    }
 }
