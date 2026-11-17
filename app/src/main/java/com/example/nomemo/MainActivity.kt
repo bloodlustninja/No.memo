@@ -54,11 +54,13 @@ class MainActivity : AppCompatActivity() {
 
         setContent {
             val notes by viewModel.notesList.collectAsState()
+            val archivedNotes by viewModel.archivedNotes.collectAsState()
             val availableTags by viewModel.availableTags.collectAsState()
             val activeTag by viewModel.activeTagFilter.collectAsState()
 
             MainNotesScreen(
                 notesList = notes,
+                archivedNotes = archivedNotes,
                 availableTags = availableTags,
                 activeTag = activeTag,
                 onNoteClick = { note ->
@@ -81,6 +83,14 @@ class MainActivity : AppCompatActivity() {
                 },
                 onSearchQueryChange = { query ->
                     viewModel.setSearchQuery(query)
+                },
+                onRestoreNote = { note ->
+                    viewModel.toggleArchive(note)
+                    Toast.makeText(this, "NOTE RESTORED FROM VAULT", Toast.LENGTH_SHORT).show()
+                },
+                onPermanentDelete = { note ->
+                    viewModel.deleteNote(note)
+                    Toast.makeText(this, "NOTE PERMANENTLY SHREDDED", Toast.LENGTH_SHORT).show()
                 },
                 onSettingsClick = {
                     startActivity(Intent(this, SettingsActivity::class.java))

@@ -28,6 +28,12 @@ class MainViewModel @JvmOverloads constructor(
 
     private val allActiveNotes = repository.getAllActiveNotes()
 
+    val archivedNotes: StateFlow<List<Note>> = repository.getArchivedNotes().stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.Eagerly,
+        initialValue = emptyList(),
+    )
+
     // Extracted dynamic hashtags from all existing notes
     val availableTags: StateFlow<List<String>> = allActiveNotes.map { notes ->
         notes.flatMap { it.tags }

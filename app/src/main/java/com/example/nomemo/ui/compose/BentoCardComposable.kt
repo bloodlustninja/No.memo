@@ -124,6 +124,7 @@ fun BentoCardComposable(
                                 text = if (isUnlockedLocally) "🔓" else "🔒",
                                 fontSize = 11.sp,
                                 modifier = Modifier.clickable {
+                                    com.example.nomemo.ui.anim.NothingAudioFeedback.playLockBolt()
                                     onLockToggle?.invoke()
                                 },
                             )
@@ -184,6 +185,7 @@ fun BentoCardComposable(
                                         .clip(RoundedCornerShape(6.dp))
                                         .clickable {
                                             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                            com.example.nomemo.ui.anim.NothingAudioFeedback.playCheckChime()
                                             onChecklistToggle?.invoke(item.id)
                                         }
                                         .padding(vertical = 2.dp),

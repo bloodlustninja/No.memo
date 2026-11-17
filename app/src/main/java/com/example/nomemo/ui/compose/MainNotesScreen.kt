@@ -71,6 +71,7 @@ import kotlin.math.absoluteValue
 @Composable
 fun MainNotesScreen(
     notesList: List<Note>,
+    archivedNotes: List<Note> = emptyList(),
     availableTags: List<String> = emptyList(),
     activeTag: String? = null,
     onNoteClick: (Note) -> Unit,
@@ -79,6 +80,8 @@ fun MainNotesScreen(
     onLockToggle: (Note) -> Unit = {},
     onTagSelect: (String?) -> Unit = {},
     onSearchQueryChange: (String) -> Unit = {},
+    onRestoreNote: (Note) -> Unit = {},
+    onPermanentDelete: (Note) -> Unit = {},
     onSettingsClick: () -> Unit,
     onDockTextClick: () -> Unit,
     onDockChecklistClick: () -> Unit,
@@ -100,6 +103,8 @@ fun MainNotesScreen(
     var isSearchActive by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
     var showFlashNote by remember { mutableStateOf(false) }
+    var showFocusTimer by remember { mutableStateOf(false) }
+    var showArchiveVault by remember { mutableStateOf(false) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
@@ -167,6 +172,40 @@ fun MainNotesScreen(
                                 tint = if (isSearchActive) NothingThemeColors.accentCrimson else NothingThemeColors.textPrimary,
                                 modifier = Modifier.size(19.dp),
                             )
+                        }
+
+                        Spacer(modifier = Modifier.width(6.dp))
+
+                        // Focus Mode Button
+                        Box(
+                            modifier = Modifier
+                                .size(38.dp)
+                                .clip(CircleShape)
+                                .clickable {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    com.example.nomemo.ui.anim.NothingAudioFeedback.playTactileClick()
+                                    showFocusTimer = true
+                                },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text("⏱", fontSize = 16.sp)
+                        }
+
+                        Spacer(modifier = Modifier.width(6.dp))
+
+                        // Vault / Archives Button
+                        Box(
+                            modifier = Modifier
+                                .size(38.dp)
+                                .clip(CircleShape)
+                                .clickable {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    com.example.nomemo.ui.anim.NothingAudioFeedback.playTactileClick()
+                                    showArchiveVault = true
+                                },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text("📦", fontSize = 15.sp)
                         }
 
                         Spacer(modifier = Modifier.width(6.dp))
@@ -460,6 +499,27 @@ fun MainNotesScreen(
                         }
                         onDockVoiceClick()
                     },
+                )
+            }
+
+            // Focus Timer Pomodoro Studio Overlay
+            if (showFocusTimer) {
+                NothingFocusTimerScreen(
+                    onDismiss = { showFocusTimer = false },
+                )
+            }
+
+            // Archive & Recovery Vault Overlay
+            if (showArchiveVault) {
+                NothingArchiveVaultScreen(
+                    archivedNotes = archivedNotes,
+                    onRestoreNote = { note ->
+                        onRestoreNote(note)
+                    },
+                    onPermanentDelete = { note ->
+                        onPermanentDelete(note)
+                    },
+                    onBackClick = { showArchiveVault = false },
                 )
             }
         }

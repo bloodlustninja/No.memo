@@ -76,6 +76,15 @@ An in-app voice transcription engine (`VoiceToTextManager.kt`) that operates sil
 ### 🧠 Smart Note Intelligence Engine
 * **Offline Local Extraction (`SmartNoteIntelligence`)**: Automatically converts natural language prose into checklists, detects urgency tags, and extracts hashtags without network latency.
 
+### 🔊 Procedural Mechanical Audio Feedback Engine
+* **Zero-Asset PCM Audio Synthesizer (`NothingAudioFeedback`)**: Procedurally generates mechanical micro-clicks (tactile click, metallic checkbox chime, bolt lock snap) directly via 16-bit PCM AudioTrack buffers with 0ms audio latency and zero MP3 asset bloat.
+
+### ⏱️ Nothing Focus Matrix (Pomodoro Studio)
+* **Hardware Glyph Countdown (`NothingFocusTimerScreen`)**: Large-format kinetic NDot digital countdown with 48-dot procedural circular glyph progress ring, customizable intervals (15/25/50 min), and direct session logging to note telemetry.
+
+### 📦 Trash & Archive Recovery Vault
+* **Recovery Vault (`NothingArchiveVaultScreen`)**: Dedicated space for archived and soft-deleted notes with 1-tap restore chimes, permanent shredding, and zero data leakage.
+
 ---
 
 ## 🛠 Tech Stack & Dependencies
