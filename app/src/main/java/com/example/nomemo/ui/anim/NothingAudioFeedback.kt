@@ -111,4 +111,12 @@ object NothingAudioFeedback {
     fun playLockBolt() {
         playBuffer(lockBoltBuffer)
     }
+
+    fun playLockToggle(isLocking: Boolean = false) {
+        if (isLocking) {
+            playLockBolt()
+        } else {
+            playTactileClick()
+        }
+    }
 }

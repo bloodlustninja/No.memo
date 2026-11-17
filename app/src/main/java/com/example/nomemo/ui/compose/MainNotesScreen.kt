@@ -39,6 +39,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -48,6 +49,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import com.example.nomemo.sensor.NothingShakeDetector
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
@@ -106,6 +108,19 @@ fun MainNotesScreen(
     var showFocusTimer by remember { mutableStateOf(false) }
     var showArchiveVault by remember { mutableStateOf(false) }
     var showKnowledgeGraph by remember { mutableStateOf(false) }
+    var showAmbientDesk by remember { mutableStateOf(false) }
+    var lockedNoteForAuth by remember { mutableStateOf<com.example.nomemo.data.entity.Note?>(null) }
+
+    DisposableEffect(Unit) {
+        val detector = NothingShakeDetector(context) {
+            showFlashNote = true
+            com.example.nomemo.ui.anim.NothingAudioFeedback.playTactileClick()
+        }
+        detector.start()
+        onDispose {
+            detector.stop()
+        }
+    }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
@@ -224,6 +239,23 @@ fun MainNotesScreen(
                             contentAlignment = Alignment.Center,
                         ) {
                             Text("🕸", fontSize = 15.sp)
+                        }
+
+                        Spacer(modifier = Modifier.width(6.dp))
+
+                        // Desk Ambient Mode Button
+                        Box(
+                            modifier = Modifier
+                                .size(38.dp)
+                                .clip(CircleShape)
+                                .clickable {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    com.example.nomemo.ui.anim.NothingAudioFeedback.playTactileClick()
+                                    showAmbientDesk = true
+                                },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text("❖", fontSize = 17.sp, color = NothingThemeColors.textPrimary)
                         }
 
                         Spacer(modifier = Modifier.width(6.dp))
@@ -432,7 +464,14 @@ fun MainNotesScreen(
                                         BentoCardComposable(
                                             note = note,
                                             isSelected = false,
-                                            onClick = { onNoteClick(note) },
+                                            onClick = {
+                                                if (note.isLocked) {
+                                                    com.example.nomemo.ui.anim.NothingAudioFeedback.playTactileClick()
+                                                    lockedNoteForAuth = note
+                                                } else {
+                                                    onNoteClick(note)
+                                                }
+                                            },
                                             onLongClick = {
                                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                                 onLockToggle(note)
@@ -547,11 +586,36 @@ fun MainNotesScreen(
                     notes = notesList,
                     onOpenNote = { note ->
                         showKnowledgeGraph = false
-                        onNoteClick(note)
+                        if (note.isLocked) {
+                            lockedNoteForAuth = note
+                        } else {
+                            onNoteClick(note)
+                        }
                     },
                     onBackClick = { showKnowledgeGraph = false },
                 )
             }
+
+            // Standby Ambient Desk HUD Screen
+            NothingAmbientDeskScreen(
+                isVisible = showAmbientDesk,
+                pinnedNotes = notesList.filter { it.isPinned },
+                onExit = { showAmbientDesk = false },
+            )
+
+            // Physical Biometric & Glyph Hardware Lock Overlay
+            NothingBiometricLockOverlay(
+                isVisible = lockedNoteForAuth != null,
+                noteTitle = lockedNoteForAuth?.title ?: "LOCKED MEMO",
+                onAuthenticated = {
+                    val target = lockedNoteForAuth
+                    lockedNoteForAuth = null
+                    if (target != null) onNoteClick(target)
+                },
+                onDismiss = {
+                    lockedNoteForAuth = null
+                },
+            )
         }
     }
 }

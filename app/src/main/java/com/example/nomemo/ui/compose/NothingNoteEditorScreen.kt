@@ -64,6 +64,8 @@ import com.example.nomemo.R
 import com.example.nomemo.data.entity.Note
 import com.example.nomemo.data.entity.NoteType
 import com.example.nomemo.data.model.ChecklistItem
+import com.example.nomemo.data.model.NoteRevision
+import com.example.nomemo.export.NothingReceiptExporter
 import com.example.nomemo.voice.AudioRecorderManager
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -96,6 +98,9 @@ fun NothingNoteEditorScreen(
     var audioWaveform by remember { mutableStateOf(initialNote.audioWaveform) }
     var showDoodleSheet by remember { mutableStateOf(false) }
     var isMarkdownPreviewMode by remember { mutableStateOf(false) }
+    var showMorseStudio by remember { mutableStateOf(false) }
+    var showHistorySheet by remember { mutableStateOf(false) }
+    val revisions = remember { mutableStateListOf<NoteRevision>().apply { addAll(initialNote.revisions) } }
 
     // Audio Recorder
     val audioRecorder = remember { AudioRecorderManager(context) }
@@ -142,6 +147,7 @@ fun NothingNoteEditorScreen(
             audioDurationMs = audioDurationMs,
             audioWaveform = audioWaveform,
             tags = extractedTags,
+            revisions = revisions.toList(),
             timestamp = System.currentTimeMillis(),
         )
         onSaveNote(updatedNote)
@@ -281,6 +287,86 @@ fun NothingNoteEditorScreen(
                                 fontSize = 9.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White,
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(4.dp))
+
+                        // Receipt Share Button
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(NothingThemeColors.tabTrackBackground)
+                                .border(1.dp, NothingThemeColors.tabTrackBorder, RoundedCornerShape(8.dp))
+                                .clickable {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    com.example.nomemo.ui.anim.NothingAudioFeedback.playTactileClick()
+                                    val currentNote = initialNote.copy(
+                                        title = title,
+                                        body = body,
+                                        checklistItems = checklistItems.toList(),
+                                        tags = run {
+                                            val regex = "#([a-zA-Z0-9_]+)".toRegex()
+                                            regex.findAll("$title $body").map { it.groupValues[1].lowercase() }.distinct().toList()
+                                        },
+                                    )
+                                    NothingReceiptExporter.shareReceipt(context, currentNote)
+                                }
+                                .padding(horizontal = 8.dp, vertical = 4.dp),
+                        ) {
+                            Text(
+                                text = "RECEIPT",
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = NothingThemeColors.accentCrimson,
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(4.dp))
+
+                        // Morse Cipher Transmitter
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(CircleShape)
+                                .background(NothingThemeColors.tabTrackBackground)
+                                .border(1.dp, NothingThemeColors.tabTrackBorder, CircleShape)
+                                .clickable {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    com.example.nomemo.ui.anim.NothingAudioFeedback.playTactileClick()
+                                    showMorseStudio = true
+                                },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                text = "•—",
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(4.dp))
+
+                        // Time Machine History
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(CircleShape)
+                                .background(NothingThemeColors.tabTrackBackground)
+                                .border(1.dp, NothingThemeColors.tabTrackBorder, CircleShape)
+                                .clickable {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    com.example.nomemo.ui.anim.NothingAudioFeedback.playTactileClick()
+                                    showHistorySheet = true
+                                },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                text = "⌛",
+                                fontSize = 12.sp,
                             )
                         }
 
@@ -757,6 +843,25 @@ fun NothingNoteEditorScreen(
                     },
                 )
             }
+
+            // Morse Cipher Studio Overlay
+            NothingMorseTransmitterOverlay(
+                isVisible = showMorseStudio,
+                initialText = "$title $body",
+                onDismiss = { showMorseStudio = false },
+            )
+
+            // Time Machine Version History Drawer
+            NothingVersionHistorySheet(
+                isVisible = showHistorySheet,
+                revisions = revisions.toList(),
+                onRestoreRevision = { rev ->
+                    title = rev.title
+                    body = rev.body
+                    showHistorySheet = false
+                },
+                onDismiss = { showHistorySheet = false },
+            )
         }
     }
 }

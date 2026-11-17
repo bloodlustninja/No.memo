@@ -2,6 +2,7 @@ package com.example.nomemo.data.db
 
 import androidx.room.TypeConverter
 import com.example.nomemo.data.model.ChecklistItem
+import com.example.nomemo.data.model.NoteRevision
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 
@@ -52,6 +53,23 @@ class Converters {
     fun toChecklistItemsList(value: String?): List<ChecklistItem> {
         if (value.isNullOrBlank()) return emptyList()
         val listType = object : TypeToken<List<ChecklistItem>>() {}.type
+        return try {
+            gson.fromJson(value, listType) ?: emptyList()
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    @TypeConverter
+    fun fromRevisionList(value: List<NoteRevision>?): String {
+        if (value == null) return "[]"
+        return gson.toJson(value)
+    }
+
+    @TypeConverter
+    fun toRevisionList(value: String?): List<NoteRevision> {
+        if (value.isNullOrBlank()) return emptyList()
+        val listType = object : TypeToken<List<NoteRevision>>() {}.type
         return try {
             gson.fromJson(value, listType) ?: emptyList()
         } catch (_: Exception) {

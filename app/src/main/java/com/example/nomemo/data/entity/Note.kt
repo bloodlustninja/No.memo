@@ -3,6 +3,7 @@ package com.example.nomemo.data.entity
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.example.nomemo.data.model.ChecklistItem
+import com.example.nomemo.data.model.NoteRevision
 
 object NoteType {
     const val NOTE = "NOTE"
@@ -29,4 +30,5 @@ data class Note(
     val audioWaveform: List<Float> = emptyList(),
     val tags: List<String> = emptyList(),
     val colorAccent: String? = null,
+    val revisions: List<NoteRevision> = emptyList(),
 )

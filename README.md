@@ -1,89 +1,63 @@
-# NO.MEMO — Nothing OS 5.0 Bento Notes & Studio
+# NO.MEMO — Nothing OS 5.0 Bento Notes & Kinetic Studio
 
 <p align="center">
   <img src="https://img.shields.io/badge/Platform-Android%20%7C%20Kotlin-000000?style=for-the-badge&logo=android&logoColor=white" alt="Platform" />
   <img src="https://img.shields.io/badge/Min%20SDK-26%20(Android%208.0)-D71921?style=for-the-badge" alt="Min SDK" />
   <img src="https://img.shields.io/badge/Target%20SDK-35%20(Android%2015)-ffffff?style=for-the-badge&logoColor=black" alt="Target SDK" />
   <img src="https://img.shields.io/badge/Compose%20BOM-2024.10.01-000000?style=for-the-badge&logo=jetpackcompose" alt="Compose BOM" />
-  <img src="https://img.shields.io/badge/Performance-60FPS%20GPU%20Canvas-green?style=for-the-badge" alt="Performance" />
+  <img src="https://img.shields.io/badge/Performance-120FPS%20Skia%20GPU-green?style=for-the-badge" alt="Performance" />
   <img src="https://img.shields.io/badge/License-MIT-blue?style=for-the-badge" alt="License" />
 </p>
 
 ---
 
-> **NO.MEMO** is a production-grade, high-performance Android application built in Kotlin. It meticulously implements the iconic industrial, monochromatic, and glassmorphic design system of **Nothing OS 5.0**, featuring hardware-accelerated frosted glass refraction, continuous Skia dot-matrix GPU canvas animations, and a silent background speech transcription engine.
+> **NO.MEMO** is an unforgettable, zero-friction Android notes and ideation studio built in 100% pure Jetpack Compose. It faithfully embodies the iconic industrial, monochrome, and dot-matrix bento design language of **Nothing OS 5.0**—powered by 120 FPS hardware-accelerated Skia GPU canvases, procedural mechanical PCM audio synthesis, an interactive Nothing Phone Glyph LED simulator, live Markdown WYSIWYG rendering, an infinite 2D Bento Knowledge Graph, and a physical homescreen bento widget.
 
 ---
 
-## ✨ Key Technical Highlights & Features
+## ✨ System Architecture & Key Innovations
 
-### 🧊 3-Layer Specular Frosted Glass Cards
-A custom hardware-accelerated frosted glass compositing architecture (`FrostedBentoCard.kt` & `Modifier.frostedGlass`) that solves foreground blur bleed:
-```
-┌─────────────────────────────────────────────────────────────┐
-│ LAYER 3: Razor-Sharp Unblurred Content (Text, Media, Icons)  │
-├─────────────────────────────────────────────────────────────┤
-│ LAYER 2: Specular Rim Border (Top-Left White -> Bottom-Right)│
-├─────────────────────────────────────────────────────────────┤
-│ LAYER 1: Background Glass Blur (20.dp Hardware Blur + Tint) │
-└─────────────────────────────────────────────────────────────┘
-```
-* **Hardware Blur (API 31+)**: Applies `Modifier.blur(20.dp)` exclusively to the background container layer.
-* **Specular Rim Gradient**: A diagonal `Brush.linearGradient` running from `Color.White.copy(alpha = borderAlpha)` down to `Color.Transparent`, mimicking light refracting off beveled glass edges.
-* **Razor-Sharp Typography**: Titles, body text, image previews, and icons sit on Layer 3 with 100% crisp clarity.
+### 1. 🔤 Kinetic Typography & Telemetry Matrix
+* **Mechanical Glyph Scrambler (`KineticDotMatrixText.kt`)**: Headers and cards scramble through pseudo-random matrix characters (`░`, `▒`, `▓`, `•`, `*`, `0`, `1`, `X`) before locking into place, mimicking the physical LED dot-matrix displays of Nothing hardware.
+* **Real-time Live Telemetry HUD (`KineticTelemetryValue.kt`)**: Monospace telemetry calculates real-time typing speed (**WPM**), character count, word count, and reading duration with zero perceptible lag.
 
-### 🎙️ Silent Background Voice Engine & Keyword Parser
-An in-app voice transcription engine (`VoiceToTextManager.kt`) that operates silently in the background:
-* **Zero Google UI Dialogs**: Binds locally via `SpeechRecognizer.createSpeechRecognizer(context)` without triggering system dialog popups.
-* **Real-time Partial Results**: Streams word-by-word transcription as speech occurs (`EXTRA_PARTIAL_RESULTS = true`).
-* **Continuous Persistent Session**: Maintains a single persistent speech recognizer instance to eliminate microphone toggling or audio stream hitches mid-sentence.
-* **Strict Keyword Title Parsing (`VoiceParser.kt`)**: All spoken text defaults 100% to the note Body unless the user explicitly speaks `"title [your title]"` or `"title [your title] body [your body]"`.
-* **Full-Screen 40dp Backdrop Blur**: When active, a 40dp hardware blur backdrop softly dims background UI clutter, putting the live audio waveform (`NothingAudioWaveform`) and streaming transcript in sharp focus.
+### 2. ⚡ Zero-Friction "Flash Note" Quick-Draw Scratchpad
+* **0ms Scratchpad (`FlashNoteOverlay.kt`)**: Summon a frosted scratchpad with instant keyboard focus, auto-hashtag extraction (`#idea`, `#urgent`, `#dev`), and single-tap persistence directly to the SQLite Room database.
+* **Physical Shake Gesture (`NothingShakeDetector.kt`)**: Shake the device to summon the scratchpad from anywhere without touching the screen.
 
-### 🎨 Procedural Skia GPU Canvas Dot-Matrix Background
-* **Zero-Allocation Drawing Loop**: Eliminates all object (`Pair` / `Color.copy`) allocations inside `drawCircle` loops to guarantee zero GC jank during high-speed scrolling.
-* **60 FPS Wave Pacing**: Capped at a 3600ms linear loop for smooth wave pacing and minimal battery draw.
-* **Touch-Interactive Wave Ripples**: Tap gestures generate expanding ripple vectors that interact dynamically with the traveling wave.
+### 3. 🎙️ High-Fidelity Audio Memo & Scrubbable Dot-Matrix Player
+* **Zero-Loss AAC Voice Recording (`AudioRecorderManager.kt`)**: Records high-fidelity `.m4a` voice memos while capturing real-time amplitude waveforms.
+* **Interactive Waveform Player (`DotMatrixAudioPlayer.kt`)**: Scrubbable dot-matrix waveform player built directly into Bento cards with mechanical haptic toggles and timestamp telemetry (`00:14 // 00:30`).
 
-### 🔤 Kinetic Dot-Matrix Typography & Telemetry HUD
-* **Mechanical Matrix Scramble (`KineticDotMatrixText`)**: Simulates Nothing's hardware LED dot-matrix display. Headers and titles kinetically scramble through random glyphs (`░`, `▒`, `▓`, `•`, `*`, `0`, `1`, `X`) before locking into place.
-* **Live Telemetry HUD (`KineticTelemetryValue`)**: Real-time monospace telemetry at the base of the screen calculating typing speed (**WPM**), word count, character count, and estimated reading time with zero perceptible latency.
+### 4. 💡 Nothing Phone Rear Glyph LED Simulator & Morse Telegraph
+* **Authentic Rear Glyph LED Array (`NothingGlyphInterface.kt`)**: Procedurally models the Camera Ring, Diagonal Slash, G-Loop, and Exclamation LEDs, pulsing in real time to voice RMS audio volume and playback.
+* **Morse Telegraph Studio (`NothingMorseTransmitterOverlay.kt` & `GlyphCipherManager.kt`)**: Translates any note into Morse signals, pulses the rear Glyph LED strips in real time, and synthesizes 880Hz telegraph audio tones. Includes an interactive mechanical DOT/DASH telegraph keyer.
 
-### ⚡ Zero-Friction "Flash Note" Quick-Draw Scratchpad
-* **0ms Scratchpad Overlay (`FlashNoteOverlay`)**: Tap or flick the bottom dock to instantly summon a specular frosted scratchpad with immediate keyboard focus, auto-hashtag recognition (`#idea`, `#urgent`, `#work`), and 1-tap persistence without opening a separate activity.
-* **Direct In-Bento Checklist Toggling**: Tap checklist items directly on the home grid cards to mark them complete/incomplete with mechanical haptic ticks—zero need to enter the editor.
+### 5. 🔒 Glyph Biometric Hardware Vault
+* **Optical Fingerprint Scanner (`NothingBiometricLockOverlay.kt`)**: Dot-Matrix concentric optical fingerprint sensor with dynamic touch-and-hold radial fill, mechanical tumbler release sounds, and 4-digit PIN fallback.
+* **Privacy Shutter (`BentoCardComposable.kt`)**: Locked cards conceal contents behind an animated matrix privacy shield until authenticated.
 
-### 🎙️ Voice Memo 2.0 & Interactive Dot-Matrix Waveform Player
-* **High-Fidelity Audio Memos (`AudioRecorderManager`)**: Simultaneously records `.m4a` AAC audio alongside real-time speech transcription, calculating amplitude waveforms on the fly.
-* **Scrubbable Waveform Player (`DotMatrixAudioPlayer`)**: Interactive Nothing OS dot-matrix audio player right inside the Bento card with Play/Pause mechanical toggles, scrubbable amplitude dots, and elapsed time telemetry (`00:14 // 00:30`).
+### 6. 🕸️ 2D Bento Knowledge Graph Constellation
+* **Infinite Pan & Zoom Canvas (`BentoKnowledgeGraphScreen.kt`)**: Visualizes all notes as interactive celestial nodes connected by laser vectors based on shared `#hashtags`. Tap any star node to instantly open the corresponding note.
 
-### 🔒 Glyph Lock (Privacy & Data Archival)
-* **Dot-Matrix Privacy Mask**: Tap to encrypt/lock confidential notes; cards conceal their contents with an animated matrix scramble pattern (`░░ GLYPH LOCKED // TAP TO REVEAL ░░`).
-* **Instant Export & Markdown Backup**: Single-tap export of the entire workspace into structured Markdown / JSON packages.
+### 7. 📝 Live Markdown WYSIWYG Renderer
+* **WYSIWYG Markdown Engine (`NothingMarkdownRenderer.kt`)**: Renders `# Headers` in NDot uppercase typography, `> Blockquotes` with crimson accent bars, interactive `- [ ] Checkboxes`, and `` `code blocks` `` with 1-tap clipboard copying.
 
-### 🪄 100% Pure Jetpack Compose 120 FPS Architecture
-* Migrated from hybrid ViewBinding/RecyclerView to an entirely pure Jetpack Compose pipeline (`MainNotesScreen`, `NothingNoteEditorScreen`, `NothingSettingsScreen`), eliminating bridge overhead for silky 120 FPS performance on Nothing Phone displays.
+### 8. 🧾 1-Bit Thermal Receipt Exporter
+* **Industrial Dot-Matrix Tape Exporter (`NothingReceiptExporter.kt`)**: Renders any note into an authentic monochrome receipt bitmap with perforated edges, cryptographic checksum, and Nothing Crimson red stamp, ready to share via Android's share sheet.
 
-### 💡 Nothing Phone Glyph LED Simulator
-* **Interactive Hardware Glyph Array (`NothingGlyphInterface`)**: Models the Camera Ring, Diagonal Slash, G-Loop, and Exclamation LEDs, pulsing in real time to audio volume (RMS dB) and playback.
+### 9. ⏱️ Focus Matrix (Pomodoro Studio) & 📦 Recovery Vault
+* **Pomodoro Studio (`NothingFocusTimerScreen.kt`)**: 48-dot procedural circular glyph progress ring with kinetic countdown timer.
+* **Archive & Recovery Vault (`NothingArchiveVaultScreen.kt`)**: Dedicated recovery space for archived and soft-deleted notes with 1-tap restore chimes and permanent shredding.
 
-### ✏️ 1-Bit "Dot-Matrix Doodle" Canvas
-* **Mechanical Sketchpad (`DotMatrixDoodleSheet`)**: 1-bit monochrome and Nothing Crimson drawing canvas for handwritten notes and diagrams, with automatic PNG rasterization and direct attachment to notes.
+### 10. ❖ Standby Ambient Desk HUD Mode
+* **Low-Power AOD Mode (`NothingAmbientDeskScreen.kt`)**: Monumental NDot digital clock (`HH:mm:ss`), ambient breathing Glyph LED orbit ring, and live pinned notes ticker tape in pure pitch-black OLED (`#000000`).
 
-### 📱 Physical Homescreen Glyph Bento Widget
-* **AppWidget Studio (`NothingBentoWidgetProvider`)**: 4x2 / 2x2 Nothing OS bento widget for the Android homescreen featuring NDot typography, latest note previews, and 1-tap quick capture triggers.
+### 11. 🔊 Procedural Mechanical Audio Feedback Engine
+* **Zero-Asset PCM Audio Synthesizer (`NothingAudioFeedback.kt`)**: Procedurally generates mechanical shutter clicks, metallic checkbox chimes, and tumbler bolt snaps directly via 16-bit PCM AudioTrack buffers with 0ms latency and 0 bytes APK overhead.
 
-### 🧠 Smart Note Intelligence Engine
-* **Offline Local Extraction (`SmartNoteIntelligence`)**: Automatically converts natural language prose into checklists, detects urgency tags, and extracts hashtags without network latency.
-
-### 🔊 Procedural Mechanical Audio Feedback Engine
-* **Zero-Asset PCM Audio Synthesizer (`NothingAudioFeedback`)**: Procedurally generates mechanical micro-clicks (tactile click, metallic checkbox chime, bolt lock snap) directly via 16-bit PCM AudioTrack buffers with 0ms audio latency and zero MP3 asset bloat.
-
-### ⏱️ Nothing Focus Matrix (Pomodoro Studio)
-* **Hardware Glyph Countdown (`NothingFocusTimerScreen`)**: Large-format kinetic NDot digital countdown with 48-dot procedural circular glyph progress ring, customizable intervals (15/25/50 min), and direct session logging to note telemetry.
-
-### 📦 Trash & Archive Recovery Vault
-* **Recovery Vault (`NothingArchiveVaultScreen`)**: Dedicated space for archived and soft-deleted notes with 1-tap restore chimes, permanent shredding, and zero data leakage.
+### 12. 📱 Physical Homescreen Glyph Bento Widget
+* **AppWidget Studio (`NothingBentoWidgetProvider.kt`)**: 4x2 / 2x2 Nothing OS bento widget for the Android homescreen featuring NDot typography, latest note previews, and 1-tap quick capture triggers.
 
 ---
 
@@ -92,11 +66,11 @@ An in-app voice transcription engine (`VoiceToTextManager.kt`) that operates sil
 | Category | Component / Library | Version | Description |
 | :--- | :--- | :--- | :--- |
 | **Language** | Kotlin | `2.2.10` | Modern, safe Kotlin stdlib |
-| **UI Framework** | Jetpack Compose | `2024.10.01` | Declarative UI & Canvas Shaders |
-| **UI Components** | ViewBinding + Material 3 | `1.12.0` | Staggered Grid RecyclerView & Floating Dock |
-| **Database** | Room Database | `2.6.1` | Local SQLite ORM with KSP codegen |
-| **Image Engine** | Coil Compose | `2.7.0` | Asynchronous off-thread image loading |
-| **JSON Serialization** | Gson | `2.10.1` | TypeConverters for List<ChecklistItem> & List<String> |
+| **UI Framework** | Jetpack Compose | `2024.10.01` | Pure Compose 120 FPS Architecture |
+| **Database** | Room Database | `2.6.1` | Local SQLite ORM with KSP codegen (v3 schema) |
+| **Image Engine** | Coil Compose | `2.7.0` | Asynchronous image rendering |
+| **JSON Serialization** | Gson | `2.10.1` | TypeConverters for Checklists, Waveforms, & Revisions |
+| **Audio Synthesis** | Android AudioTrack | Native | 16-bit PCM procedural audio feedback |
 | **Concurrency** | Kotlin Coroutines & StateFlow | `2.8.7` | Reactive asynchronous state management |
 
 ---
@@ -105,14 +79,21 @@ An in-app voice transcription engine (`VoiceToTextManager.kt`) that operates sil
 
 ```mermaid
 graph TD
-    A[User Interaction / Voice Input] --> B[MainActivity & VoiceToTextManager]
-    B --> C[VoiceParser / Strict Keyword Engine]
-    C --> D[MainViewModel / StateFlow]
-    D --> E[NoteRepository]
-    E --> F[Room Database / AppDatabase]
-    F --> D
-    D --> G[Compose BentoCardComposable & FrostedBentoCard]
-    G --> H[StaggeredGrid RecyclerView]
+    A[User Gesture / Shake / Voice] --> B[MainActivity & MainNotesScreen]
+    B --> C[MainViewModel / StateFlow]
+    C --> D[NoteRepository]
+    D --> E[Room AppDatabase]
+    E --> D
+    D --> C
+    C --> F[120 FPS Compose Bento Grid]
+    F --> G[FrostedBentoCard & BentoCardComposable]
+    B --> H[NothingBiometricLockOverlay]
+    B --> I[NothingAmbientDeskScreen]
+    B --> J[BentoKnowledgeGraphScreen]
+    B --> K[FlashNoteOverlay]
+    B --> L[NothingFocusTimerScreen]
+    B --> M[NothingArchiveVaultScreen]
+    B --> N[NothingVoiceOverlay & GlyphInterface]
 ```
 
 ---
@@ -122,45 +103,50 @@ graph TD
 ```
 com.example.nomemo
 ├── data
-│   ├── db           # AppDatabase, NoteDao, & Gson Converters
+│   ├── db           # AppDatabase (v3), NoteDao, Converters
 │   ├── entity       # Room Note Entity & NoteType Constants
-│   ├── model        # ChecklistItem Model
-│   ├── pref         # PreferencesManager (Pitch Black, Glassmorphism, Haptics)
-│   └── repository   # NoteRepository Layer
+│   ├── model        # ChecklistItem, NoteRevision
+│   ├── pref         # PreferencesManager (Pitch Black, Glassmorphism, Haptics, Accent)
+│   └── repository   # NoteRepository
+├── export
+│   └── NothingReceiptExporter.kt   # 1-Bit Thermal Receipt & Tape Exporter
+├── sensor
+│   └── NothingShakeDetector.kt     # Hardware Accelerometer Gesture Engine
 ├── ui
-│   ├── adapter      # NoteBentoAdapter, AttachedMediaAdapter, ChecklistAdapter
-│   ├── anim         # Snappy RubberBand Spring Animations
-│   ├── compose      # NothingDotMatrixBackground, FrostedBentoCard, NothingVoiceOverlay, NothingAudioWaveform, NothingSyncedTabs
-│   ├── editor       # NoteEditorActivity (Auto-Save, Media, Checklist, Undo/Redo)
-│   ├── settings     # SettingsActivity (Theme, Glassmorphism, Clear Data)
+│   ├── anim         # NothingAudioFeedback (Procedural PCM Audio Synthesizer)
+│   ├── compose      # MainNotesScreen, FrostedBentoCard, NothingNoteEditorScreen,
+│   │                # BentoKnowledgeGraphScreen, NothingMarkdownRenderer,
+│   │                # NothingBiometricLockOverlay, NothingAmbientDeskScreen,
+│   │                # NothingMorseTransmitterOverlay, NothingVersionHistorySheet,
+│   │                # NothingFocusTimerScreen, NothingArchiveVaultScreen,
+│   │                # DotMatrixAudioPlayer, DotMatrixDoodleSheet, FlashNoteOverlay,
+│   │                # NothingGlyphInterface, KineticTypography
+│   ├── editor       # NoteEditorActivity (Pure Compose Host)
+│   ├── settings     # SettingsActivity & NothingSettingsScreen
 │   └── viewmodel    # MainViewModel (0ms In-Memory Pre-Filtering)
 ├── voice
-│   ├── VoiceToTextManager.kt   # Persistent Silent Background Speech Engine
-│   └── VoiceParser.kt          # Strict Keyword Title/Body Voice Parser
-└── MainActivity.kt             # ViewBinding Dashboard & Floating Capsule Dock
+│   ├── AudioRecorderManager.kt     # AAC M4A Recorder & Waveform Engine
+│   ├── GlyphCipherManager.kt       # Morse Code & Telegraph Tone Synthesizer
+│   ├── VoiceToTextManager.kt       # Persistent Silent Speech Recognizer
+│   └── VoiceParser.kt              # NLP Keyword Title & Body Parser
+├── widget
+│   └── NothingBentoWidgetProvider.kt # Android Homescreen Glyph Bento AppWidget
+└── MainActivity.kt                 # Root Compose Dashboard Host
 ```
 
 ---
 
-## 🚀 Building & Installation
+## 🚀 Building & Running
 
-### Prerequisites
-* **Android Studio**: Ladybug (2024.2+) or higher
-* **JDK**: 17+
-* **Target Device**: Android 8.0 (API 26+) or higher (Android 12+ recommended for hardware blur shaders)
-
-### Build Commands
 ```bash
-# Clone the repository
-git clone https://github.com/your-username/nomemo.git
-cd nomemo
-
-# Build Debug APK
+# Build the complete Debug APK
 ./gradlew assembleDebug
 
-# Install directly on connected device via ADB
+# Install on a connected physical device or emulator
 ./gradlew installDebug
 ```
+
+Output APK: `app/build/outputs/apk/debug/app-debug.apk`
 
 ---
 
