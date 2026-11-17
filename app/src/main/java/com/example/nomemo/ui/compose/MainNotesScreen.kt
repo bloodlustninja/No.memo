@@ -105,6 +105,7 @@ fun MainNotesScreen(
     var showFlashNote by remember { mutableStateOf(false) }
     var showFocusTimer by remember { mutableStateOf(false) }
     var showArchiveVault by remember { mutableStateOf(false) }
+    var showKnowledgeGraph by remember { mutableStateOf(false) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
@@ -206,6 +207,23 @@ fun MainNotesScreen(
                             contentAlignment = Alignment.Center,
                         ) {
                             Text("📦", fontSize = 15.sp)
+                        }
+
+                        Spacer(modifier = Modifier.width(6.dp))
+
+                        // Bento Knowledge Graph Button
+                        Box(
+                            modifier = Modifier
+                                .size(38.dp)
+                                .clip(CircleShape)
+                                .clickable {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    com.example.nomemo.ui.anim.NothingAudioFeedback.playTactileClick()
+                                    showKnowledgeGraph = true
+                                },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text("🕸", fontSize = 15.sp)
                         }
 
                         Spacer(modifier = Modifier.width(6.dp))
@@ -520,6 +538,18 @@ fun MainNotesScreen(
                         onPermanentDelete(note)
                     },
                     onBackClick = { showArchiveVault = false },
+                )
+            }
+
+            // Bento Knowledge Graph 2D Constellation Overlay
+            if (showKnowledgeGraph) {
+                BentoKnowledgeGraphScreen(
+                    notes = notesList,
+                    onOpenNote = { note ->
+                        showKnowledgeGraph = false
+                        onNoteClick(note)
+                    },
+                    onBackClick = { showKnowledgeGraph = false },
                 )
             }
         }

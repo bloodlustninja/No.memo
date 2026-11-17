@@ -95,6 +95,7 @@ fun NothingNoteEditorScreen(
     var audioDurationMs by remember { mutableStateOf(initialNote.audioDurationMs) }
     var audioWaveform by remember { mutableStateOf(initialNote.audioWaveform) }
     var showDoodleSheet by remember { mutableStateOf(false) }
+    var isMarkdownPreviewMode by remember { mutableStateOf(false) }
 
     // Audio Recorder
     val audioRecorder = remember { AudioRecorderManager(context) }
@@ -256,6 +257,30 @@ fun NothingNoteEditorScreen(
                                 contentDescription = "Redo",
                                 tint = if (redoStack.isNotEmpty()) NothingThemeColors.textPrimary else NothingThemeColors.textMuted,
                                 modifier = Modifier.size(16.dp),
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(4.dp))
+
+                        // Preview / Edit Markdown Toggle
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(if (isMarkdownPreviewMode) NothingThemeColors.accentCrimson else NothingThemeColors.tabTrackBackground)
+                                .border(1.dp, NothingThemeColors.tabTrackBorder, RoundedCornerShape(8.dp))
+                                .clickable {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    com.example.nomemo.ui.anim.NothingAudioFeedback.playTactileClick()
+                                    isMarkdownPreviewMode = !isMarkdownPreviewMode
+                                }
+                                .padding(horizontal = 8.dp, vertical = 4.dp),
+                        ) {
+                            Text(
+                                text = if (isMarkdownPreviewMode) "PREVIEW" else "EDIT",
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
                             )
                         }
 
@@ -577,35 +602,42 @@ fun NothingNoteEditorScreen(
 
                     // Main Note Body
                     item {
-                        BasicTextField(
-                            value = body,
-                            onValueChange = {
-                                body = it
-                                if (!isUndoRedoAction) {
-                                    undoStack.addLast(Pair(title, it))
-                                    redoStack.clear()
-                                }
-                            },
-                            textStyle = TextStyle(
-                                fontSize = 15.sp,
-                                color = NothingThemeColors.textSecondary,
-                                lineHeight = 24.sp,
-                            ),
-                            cursorBrush = SolidColor(NothingThemeColors.accentCrimson),
-                            minLines = 8,
-                            decorationBox = { innerTextField ->
-                                if (body.isEmpty() && checklistItems.isEmpty()) {
-                                    Text(
-                                        text = "Start writing your note here...\n\nTips:\n• Use #headers or - [ ] for checklists\n• Use #tags for smart organization\n• Record voice memos from the toolbar below",
-                                        fontSize = 14.sp,
-                                        color = NothingThemeColors.textMuted,
-                                        lineHeight = 22.sp,
-                                    )
-                                }
-                                innerTextField()
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
+                        if (isMarkdownPreviewMode) {
+                            NothingMarkdownRenderer(
+                                content = if (body.isBlank()) "*No content to preview yet...*" else body,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        } else {
+                            BasicTextField(
+                                value = body,
+                                onValueChange = {
+                                    body = it
+                                    if (!isUndoRedoAction) {
+                                        undoStack.addLast(Pair(title, it))
+                                        redoStack.clear()
+                                    }
+                                },
+                                textStyle = TextStyle(
+                                    fontSize = 15.sp,
+                                    color = NothingThemeColors.textSecondary,
+                                    lineHeight = 24.sp,
+                                ),
+                                cursorBrush = SolidColor(NothingThemeColors.accentCrimson),
+                                minLines = 8,
+                                decorationBox = { innerTextField ->
+                                    if (body.isEmpty() && checklistItems.isEmpty()) {
+                                        Text(
+                                            text = "Start writing your note here...\n\nTips:\n• Use #headers or - [ ] for checklists\n• Use #tags for smart organization\n• Record voice memos from the toolbar below",
+                                            fontSize = 14.sp,
+                                            color = NothingThemeColors.textMuted,
+                                            lineHeight = 22.sp,
+                                        )
+                                    }
+                                    innerTextField()
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
                     }
 
                     item {

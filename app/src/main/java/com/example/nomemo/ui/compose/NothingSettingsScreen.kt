@@ -203,6 +203,46 @@ fun NothingSettingsScreen(
                                     ),
                                 )
                             }
+
+                            // Accent Color Palette Selector
+                            Column {
+                                Text(
+                                    text = "Glyph Accent Palette",
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = NothingThemeColors.textPrimary,
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    listOf(
+                                        "#D71921" to Color(0xFFD71921),
+                                        "#FFB300" to Color(0xFFFFB300),
+                                        "#00E676" to Color(0xFF00E676),
+                                        "#FFFFFF" to Color.White,
+                                        "#00E5FF" to Color(0xFF00E5FF),
+                                    ).forEach { (hex, col) ->
+                                        val isSel = prefsManager.accentHex == hex
+                                        Box(
+                                            modifier = Modifier
+                                                .size(28.dp)
+                                                .clip(CircleShape)
+                                                .background(col)
+                                                .border(
+                                                    width = if (isSel) 2.5.dp else 1.dp,
+                                                    color = if (isSel) Color.White else Color(0x33FFFFFF),
+                                                    shape = CircleShape,
+                                                )
+                                                .clickable {
+                                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                                    com.example.nomemo.ui.anim.NothingAudioFeedback.playTactileClick()
+                                                    prefsManager.accentHex = hex
+                                                    Toast.makeText(context, "ACCENT COLOR APPLIED", Toast.LENGTH_SHORT).show()
+                                                },
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
 
