@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -23,25 +24,50 @@ class MainViewModel @JvmOverloads constructor(
 
     val activeFilter = MutableStateFlow("ALL")
     val searchQuery = MutableStateFlow("")
+    val activeTagFilter = MutableStateFlow<String?>(null)
 
     private val allActiveNotes = repository.getAllActiveNotes()
+
+    // Extracted dynamic hashtags from all existing notes
+    val availableTags: StateFlow<List<String>> = allActiveNotes.map { notes ->
+        notes.flatMap { it.tags }
+            .distinct()
+            .sorted()
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.Eagerly,
+        initialValue = emptyList(),
+    )
 
     val notesList: StateFlow<List<Note>> = combine(
         allActiveNotes,
         activeFilter,
         searchQuery,
-    ) { notes, filter, query ->
+        activeTagFilter,
+    ) { notes, filter, query, tagFilter ->
         var list = notes
+
+        // 1. Tag filter
+        if (!tagFilter.isNullOrBlank()) {
+            list = list.filter { it.tags.contains(tagFilter) }
+        }
+
+        // 2. Search query filter
         if (query.isNotBlank()) {
             val q = query.trim()
             list = list.filter {
-                it.title.contains(q, ignoreCase = true) || it.body.contains(q, ignoreCase = true)
+                it.title.contains(q, ignoreCase = true) ||
+                    it.body.contains(q, ignoreCase = true) ||
+                    it.tags.any { tag -> tag.contains(q, ignoreCase = true) }
             }
         }
+
+        // 3. Category Tab filter
         val filtered = when (filter) {
             "NOTES", NoteType.NOTE -> list.filter { it.type == NoteType.NOTE }
             "CHECKLISTS", NoteType.CHECKLIST -> list.filter { it.type == NoteType.CHECKLIST }
             "MEDIA" -> list.filter { it.type == NoteType.MEDIA }
+            "AUDIO", NoteType.AUDIO -> list.filter { it.type == NoteType.AUDIO }
             else -> list
         }
         filtered.toList()
@@ -57,6 +83,10 @@ class MainViewModel @JvmOverloads constructor(
 
     fun setSearchQuery(query: String) {
         searchQuery.value = query
+    }
+
+    fun setTagFilter(tag: String?) {
+        activeTagFilter.value = if (activeTagFilter.value == tag) null else tag
     }
 
     fun insertNote(note: Note) {
@@ -86,6 +116,18 @@ class MainViewModel @JvmOverloads constructor(
     fun toggleArchive(note: Note) {
         viewModelScope.launch {
             repository.toggleArchiveStatus(note)
+        }
+    }
+
+    fun toggleLock(note: Note) {
+        viewModelScope.launch {
+            repository.toggleLockStatus(note)
+        }
+    }
+
+    fun toggleChecklistItem(note: Note, itemId: String) {
+        viewModelScope.launch {
+            repository.toggleChecklistItem(note, itemId)
         }
     }
 }

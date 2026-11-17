@@ -8,6 +8,7 @@ object NoteType {
     const val NOTE = "NOTE"
     const val CHECKLIST = "CHECKLIST"
     const val MEDIA = "MEDIA"
+    const val AUDIO = "AUDIO"
 }
 
 @Entity(tableName = "notes")
@@ -19,7 +20,13 @@ data class Note(
     val timestamp: Long = System.currentTimeMillis(),
     val isPinned: Boolean = false,
     val isArchived: Boolean = false,
+    val isLocked: Boolean = false,
     val type: String = NoteType.NOTE,
     val imageUris: List<String> = emptyList(),
-    val checklistItems: List<ChecklistItem> = emptyList()
+    val checklistItems: List<ChecklistItem> = emptyList(),
+    val audioUri: String? = null,
+    val audioDurationMs: Long = 0L,
+    val audioWaveform: List<Float> = emptyList(),
+    val tags: List<String> = emptyList(),
+    val colorAccent: String? = null,
 )

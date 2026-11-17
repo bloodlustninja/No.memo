@@ -45,8 +45,24 @@ An in-app voice transcription engine (`VoiceToTextManager.kt`) that operates sil
 * **60 FPS Wave Pacing**: Capped at a 3600ms linear loop for smooth wave pacing and minimal battery draw.
 * **Touch-Interactive Wave Ripples**: Tap gestures generate expanding ripple vectors that interact dynamically with the traveling wave.
 
-### ⚡ 0ms Instant In-Memory Filter Switching
-* **Zero SQLite Disk Latency**: `MainViewModel` uses in-memory pre-filtering with `SharingStarted.Eagerly` emitting `.toList()` list copies for instantaneous 0ms tab switches and zero blank gaps.
+### 🔤 Kinetic Dot-Matrix Typography & Telemetry HUD
+* **Mechanical Matrix Scramble (`KineticDotMatrixText`)**: Simulates Nothing's hardware LED dot-matrix display. Headers and titles kinetically scramble through random glyphs (`░`, `▒`, `▓`, `•`, `*`, `0`, `1`, `X`) before locking into place.
+* **Live Telemetry HUD (`KineticTelemetryValue`)**: Real-time monospace telemetry at the base of the screen calculating typing speed (**WPM**), word count, character count, and estimated reading time with zero perceptible latency.
+
+### ⚡ Zero-Friction "Flash Note" Quick-Draw Scratchpad
+* **0ms Scratchpad Overlay (`FlashNoteOverlay`)**: Tap or flick the bottom dock to instantly summon a specular frosted scratchpad with immediate keyboard focus, auto-hashtag recognition (`#idea`, `#urgent`, `#work`), and 1-tap persistence without opening a separate activity.
+* **Direct In-Bento Checklist Toggling**: Tap checklist items directly on the home grid cards to mark them complete/incomplete with mechanical haptic ticks—zero need to enter the editor.
+
+### 🎙️ Voice Memo 2.0 & Interactive Dot-Matrix Waveform Player
+* **High-Fidelity Audio Memos (`AudioRecorderManager`)**: Simultaneously records `.m4a` AAC audio alongside real-time speech transcription, calculating amplitude waveforms on the fly.
+* **Scrubbable Waveform Player (`DotMatrixAudioPlayer`)**: Interactive Nothing OS dot-matrix audio player right inside the Bento card with Play/Pause mechanical toggles, scrubbable amplitude dots, and elapsed time telemetry (`00:14 // 00:30`).
+
+### 🔒 Glyph Lock (Privacy & Data Archival)
+* **Dot-Matrix Privacy Mask**: Tap to encrypt/lock confidential notes; cards conceal their contents with an animated matrix scramble pattern (`░░ GLYPH LOCKED // TAP TO REVEAL ░░`).
+* **Instant Export & Markdown Backup**: Single-tap export of the entire workspace into structured Markdown / JSON packages.
+
+### 🪄 100% Pure Jetpack Compose 120 FPS Architecture
+* Migrated from hybrid ViewBinding/RecyclerView to an entirely pure Jetpack Compose pipeline (`MainNotesScreen`, `NothingNoteEditorScreen`, `NothingSettingsScreen`), eliminating bridge overhead for silky 120 FPS performance on Nothing Phone displays.
 
 ---
 

@@ -33,4 +33,15 @@ class NoteRepository(private val noteDao: NoteDao) {
     suspend fun toggleArchiveStatus(note: Note) {
         noteDao.updateNote(note.copy(isArchived = !note.isArchived))
     }
+
+    suspend fun toggleLockStatus(note: Note) {
+        noteDao.updateNote(note.copy(isLocked = !note.isLocked))
+    }
+
+    suspend fun toggleChecklistItem(note: Note, itemId: String) {
+        val updatedItems = note.checklistItems.map { item ->
+            if (item.id == itemId) item.copy(isChecked = !item.isChecked) else item
+        }
+        noteDao.updateNote(note.copy(checklistItems = updatedItems))
+    }
 }
