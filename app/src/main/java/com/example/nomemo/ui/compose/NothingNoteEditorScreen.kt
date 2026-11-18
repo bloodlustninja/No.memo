@@ -5,10 +5,15 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -23,6 +28,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -44,12 +50,14 @@ import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.CheckBox
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.LocalFireDepartment
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.LockOpen
 import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.PushPin
+import androidx.compose.material.icons.outlined.RestartAlt
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -75,7 +83,9 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -89,6 +99,7 @@ import com.example.nomemo.data.entity.NoteType
 import com.example.nomemo.data.model.ChecklistItem
 import com.example.nomemo.data.model.NoteRevision
 import com.example.nomemo.export.NothingReceiptExporter
+import com.example.nomemo.ledger.ExpenseParser
 import com.example.nomemo.voice.VoiceToTextManager
 import kotlinx.coroutines.delay
 
@@ -122,6 +133,12 @@ fun NothingNoteEditorScreen(
     // Dropdown overflow menu and delete dialog states
     var showMoreMenu by remember { mutableStateOf(false) }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
+
+    // Text-driven Auto-Ledger state and layout tracking
+    var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
+    val ledgerAnalysis = remember(title, body) {
+        ExpenseParser.parse("$title\n$body")
+    }
 
     // Voice Dictation (SpeechRecognizer via VoiceToTextManager)
     val voiceManager = remember { VoiceToTextManager(context) }
@@ -357,6 +374,60 @@ fun NothingNoteEditorScreen(
                                     },
                                 )
 
+                                // Export CSV (Ledger)
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            text = "EXPORT CSV",
+                                            fontFamily = FontFamily.Monospace,
+                                            fontSize = 12.sp,
+                                            color = NothingThemeColors.textPrimary,
+                                        )
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Outlined.FileDownload,
+                                            contentDescription = "Export CSV",
+                                            modifier = Modifier.size(20.dp),
+                                            tint = NothingThemeColors.iconInactive,
+                                        )
+                                    },
+                                    onClick = {
+                                        showMoreMenu = false
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        ExpenseParser.exportCsv(context, title, body)
+                                    },
+                                )
+
+                                // Reset Ledger
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            text = "RESET LEDGER",
+                                            fontFamily = FontFamily.Monospace,
+                                            fontSize = 12.sp,
+                                            color = NothingThemeColors.textSecondary,
+                                        )
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Outlined.RestartAlt,
+                                            contentDescription = "Reset Ledger",
+                                            modifier = Modifier.size(20.dp),
+                                            tint = NothingThemeColors.iconInactive,
+                                        )
+                                    },
+                                    onClick = {
+                                        showMoreMenu = false
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        if (!isUndoRedoAction) {
+                                            undoStack.addLast(Pair(title, body))
+                                            redoStack.clear()
+                                        }
+                                        body = ExpenseParser.resetLedger(body)
+                                    },
+                                )
+
                                 // Delete Note
                                 DropdownMenuItem(
                                     text = {
@@ -541,7 +612,7 @@ fun NothingNoteEditorScreen(
                         }
                     }
 
-                    // Main Note Body with Inline Smart Checklist Detection
+                    // Main Note Body with Inline Smart Checklist Detection and Auto-Ledger Line Badges
                     item {
                         BasicTextField(
                             value = body,
@@ -575,6 +646,7 @@ fun NothingNoteEditorScreen(
                                     }
                                 }
                             },
+                            onTextLayout = { textLayoutResult = it },
                             textStyle = TextStyle(
                                 fontSize = 15.sp,
                                 color = NothingThemeColors.textSecondary,
@@ -583,15 +655,47 @@ fun NothingNoteEditorScreen(
                             cursorBrush = SolidColor(NothingThemeColors.iconActive),
                             minLines = 8,
                             decorationBox = { innerTextField ->
-                                if (body.isEmpty() && checklistItems.isEmpty()) {
-                                    Text(
-                                        text = "Write something...",
-                                        fontSize = 15.sp,
-                                        color = NothingThemeColors.textMuted,
-                                        lineHeight = 24.sp,
-                                    )
+                                Box(modifier = Modifier.fillMaxWidth()) {
+                                    if (body.isEmpty() && checklistItems.isEmpty()) {
+                                        Text(
+                                            text = "Write something...",
+                                            fontSize = 15.sp,
+                                            color = NothingThemeColors.textMuted,
+                                            lineHeight = 24.sp,
+                                        )
+                                    }
+                                    innerTextField()
+
+                                    // Right-align parsed currency amounts on each expense line in muted monospace (#8E8E93) as user types
+                                    if (ledgerAnalysis.isLedgerMode) {
+                                        val layout = textLayoutResult
+                                        val lines = body.split("\n")
+                                        var charOffset = 0
+                                        lines.forEach { line ->
+                                            val parsed = ExpenseParser.parseLine(line, ledgerAnalysis.currencySymbol)
+                                            if (parsed != null && parsed.formattedBadge != null) {
+                                                val lineTop = if (layout != null && charOffset <= body.length) {
+                                                    val visualLine = layout.getLineForOffset(charOffset)
+                                                    with(LocalDensity.current) { layout.getLineTop(visualLine).toDp() }
+                                                } else null
+
+                                                if (lineTop != null) {
+                                                    Text(
+                                                        text = parsed.formattedBadge,
+                                                        fontFamily = FontFamily.Monospace,
+                                                        fontSize = 12.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = Color(0xFF8E8E93),
+                                                        modifier = Modifier
+                                                            .align(Alignment.TopEnd)
+                                                            .offset(y = lineTop),
+                                                    )
+                                                }
+                                            }
+                                            charOffset += line.length + 1
+                                        }
+                                    }
                                 }
-                                innerTextField()
                             },
                             modifier = Modifier.fillMaxWidth(),
                         )
@@ -602,127 +706,207 @@ fun NothingNoteEditorScreen(
                     }
                 }
 
-                // FLOATING KEYBOARD CAPSULE PILL: Generous floating pill with 4 monochrome icon buttons with 120Hz tactile press
-                Box(
+                // BOTTOM AREA: Minimalist Ledger Summary Strip + Floating Keyboard Capsule Pill
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .imePadding()
-                        .navigationBarsPadding()
-                        .padding(bottom = 14.dp),
-                    contentAlignment = Alignment.Center,
+                        .navigationBarsPadding(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .height(58.dp)
-                            .clip(RoundedCornerShape(29.dp))
-                            .background(NothingThemeColors.surface)
-                            .border(1.dp, NothingThemeColors.surfaceBorder, RoundedCornerShape(29.dp))
-                            .padding(horizontal = 18.dp),
-                        horizontalArrangement = Arrangement.spacedBy(18.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+                    // Minimalist Non-intrusive Monospace Summary Strip (Active strictly in Ledger Mode)
+                    AnimatedVisibility(
+                        visible = ledgerAnalysis.isLedgerMode,
+                        enter = fadeIn(tween(180)) + slideInVertically(tween(180)) { it / 2 },
+                        exit = fadeOut(tween(150)) + slideOutVertically(tween(150)) { it / 2 },
                     ) {
-                        // 1. Checklist Toggle
                         Box(
                             modifier = Modifier
-                                .size(44.dp)
-                                .clip(CircleShape)
-                                .tactilePress {
-                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                    checklistItems.add(ChecklistItem(text = ""))
-                                    noteType = NoteType.CHECKLIST
-                                },
+                                .fillMaxWidth()
+                                .padding(horizontal = 20.dp, vertical = 4.dp),
                             contentAlignment = Alignment.Center,
                         ) {
-                            Icon(
-                                imageVector = Icons.Outlined.CheckBox,
-                                contentDescription = "Checklist Toggle",
-                                modifier = Modifier.size(22.dp),
-                                tint = if (checklistItems.isNotEmpty()) NothingThemeColors.iconActive else NothingThemeColors.iconInactive,
-                            )
-                        }
+                            Row(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(NothingThemeColors.surface)
+                                    .border(1.dp, NothingThemeColors.surfaceBorder, RoundedCornerShape(8.dp))
+                                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    text = "TOTAL: ${ledgerAnalysis.currencySymbol}${ExpenseParser.formatAmountWithCommas(ledgerAnalysis.totalExpense)}",
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = NothingThemeColors.textPrimary,
+                                    letterSpacing = 0.5.sp,
+                                )
 
-                        // 2. Voice Dictation (SpeechRecognizer)
-                        Box(
-                            modifier = Modifier
-                                .size(44.dp)
-                                .clip(CircleShape)
-                                .tactilePress {
-                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                    if (isListening) {
-                                        voiceManager.stopListening()
+                                if (ledgerAnalysis.splitCount != null && ledgerAnalysis.perPersonSplit != null) {
+                                    Text(
+                                        text = "•",
+                                        fontFamily = FontFamily.Monospace,
+                                        fontSize = 11.sp,
+                                        color = NothingThemeColors.textMuted,
+                                    )
+                                    Text(
+                                        text = "${ledgerAnalysis.splitCount} WAYS: ${ledgerAnalysis.currencySymbol}${ExpenseParser.formatAmountWithCommas(ledgerAnalysis.perPersonSplit!!)}/ea",
+                                        fontFamily = FontFamily.Monospace,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = NothingThemeColors.textSecondary,
+                                        letterSpacing = 0.5.sp,
+                                    )
+                                }
+
+                                if (ledgerAnalysis.capAmount != null && ledgerAnalysis.remainingBudget != null) {
+                                    Text(
+                                        text = "•",
+                                        fontFamily = FontFamily.Monospace,
+                                        fontSize = 11.sp,
+                                        color = NothingThemeColors.textMuted,
+                                    )
+                                    val isOver = ledgerAnalysis.remainingBudget!! < 0
+                                    val remText = if (!isOver) {
+                                        "REM: ${ledgerAnalysis.currencySymbol}${ExpenseParser.formatAmountWithCommas(ledgerAnalysis.remainingBudget!!)}"
                                     } else {
-                                        val hasPerm = ContextCompat.checkSelfPermission(
-                                            context,
-                                            Manifest.permission.RECORD_AUDIO,
-                                        ) == PackageManager.PERMISSION_GRANTED
-                                        if (hasPerm) {
-                                            voiceManager.startListening()
+                                        "OVER: ${ledgerAnalysis.currencySymbol}${ExpenseParser.formatAmountWithCommas(kotlin.math.abs(ledgerAnalysis.remainingBudget!!))}"
+                                    }
+                                    Text(
+                                        text = remText,
+                                        fontFamily = FontFamily.Monospace,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (ledgerAnalysis.isCapExceededOrNearLimit) NothingThemeColors.accentCrimson else NothingThemeColors.textSecondary,
+                                        letterSpacing = 0.5.sp,
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // Floating Keyboard Capsule Pill Dock
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 14.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .height(58.dp)
+                                .clip(RoundedCornerShape(29.dp))
+                                .background(NothingThemeColors.surface)
+                                .border(1.dp, NothingThemeColors.surfaceBorder, RoundedCornerShape(29.dp))
+                                .padding(horizontal = 18.dp),
+                            horizontalArrangement = Arrangement.spacedBy(18.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            // 1. Checklist Toggle
+                            Box(
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .clip(CircleShape)
+                                    .tactilePress {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        checklistItems.add(ChecklistItem(text = ""))
+                                        noteType = NoteType.CHECKLIST
+                                    },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.CheckBox,
+                                    contentDescription = "Checklist Toggle",
+                                    modifier = Modifier.size(22.dp),
+                                    tint = if (checklistItems.isNotEmpty()) NothingThemeColors.iconActive else NothingThemeColors.iconInactive,
+                                )
+                            }
+
+                            // 2. Voice Dictation (SpeechRecognizer)
+                            Box(
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .clip(CircleShape)
+                                    .tactilePress {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        if (isListening) {
+                                            voiceManager.stopListening()
                                         } else {
-                                            micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                                            val hasPerm = ContextCompat.checkSelfPermission(
+                                                context,
+                                                Manifest.permission.RECORD_AUDIO,
+                                            ) == PackageManager.PERMISSION_GRANTED
+                                            if (hasPerm) {
+                                                voiceManager.startListening()
+                                            } else {
+                                                micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                                            }
                                         }
-                                    }
-                                },
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(
-                                imageVector = Icons.Outlined.Mic,
-                                contentDescription = "Voice Dictation",
-                                modifier = Modifier.size(22.dp),
-                                tint = if (isListening) NothingThemeColors.iconActive else NothingThemeColors.iconInactive,
-                            )
-                        }
+                                    },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Mic,
+                                    contentDescription = "Voice Dictation",
+                                    modifier = Modifier.size(22.dp),
+                                    tint = if (isListening) NothingThemeColors.iconActive else NothingThemeColors.iconInactive,
+                                )
+                            }
 
-                        // 3. Undo
-                        Box(
-                            modifier = Modifier
-                                .size(44.dp)
-                                .clip(CircleShape)
-                                .tactilePress(enabled = undoStack.size > 1) {
-                                    if (undoStack.size > 1) {
-                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                        val cur = undoStack.removeLast()
-                                        redoStack.addLast(cur)
-                                        val prev = undoStack.last()
-                                        isUndoRedoAction = true
-                                        title = prev.first
-                                        body = prev.second
-                                        isUndoRedoAction = false
-                                    }
-                                },
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Outlined.Undo,
-                                contentDescription = "Undo",
-                                modifier = Modifier.size(22.dp),
-                                tint = if (undoStack.size > 1) NothingThemeColors.iconActive else NothingThemeColors.iconInactive,
-                            )
-                        }
+                            // 3. Undo
+                            Box(
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .clip(CircleShape)
+                                    .tactilePress(enabled = undoStack.size > 1) {
+                                        if (undoStack.size > 1) {
+                                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                            val cur = undoStack.removeLast()
+                                            redoStack.addLast(cur)
+                                            val prev = undoStack.last()
+                                            isUndoRedoAction = true
+                                            title = prev.first
+                                            body = prev.second
+                                            isUndoRedoAction = false
+                                        }
+                                    },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Outlined.Undo,
+                                    contentDescription = "Undo",
+                                    modifier = Modifier.size(22.dp),
+                                    tint = if (undoStack.size > 1) NothingThemeColors.iconActive else NothingThemeColors.iconInactive,
+                                )
+                            }
 
-                        // 4. Redo
-                        Box(
-                            modifier = Modifier
-                                .size(44.dp)
-                                .clip(CircleShape)
-                                .tactilePress(enabled = redoStack.isNotEmpty()) {
-                                    if (redoStack.isNotEmpty()) {
-                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                        val nxt = redoStack.removeLast()
-                                        undoStack.addLast(nxt)
-                                        isUndoRedoAction = true
-                                        title = nxt.first
-                                        body = nxt.second
-                                        isUndoRedoAction = false
-                                    }
-                                },
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Outlined.Redo,
-                                contentDescription = "Redo",
-                                modifier = Modifier.size(22.dp),
-                                tint = if (redoStack.isNotEmpty()) NothingThemeColors.iconActive else NothingThemeColors.iconInactive,
-                            )
+                            // 4. Redo
+                            Box(
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .clip(CircleShape)
+                                    .tactilePress(enabled = redoStack.isNotEmpty()) {
+                                        if (redoStack.isNotEmpty()) {
+                                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                            val nxt = redoStack.removeLast()
+                                            undoStack.addLast(nxt)
+                                            isUndoRedoAction = true
+                                            title = nxt.first
+                                            body = nxt.second
+                                            isUndoRedoAction = false
+                                        }
+                                    },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Outlined.Redo,
+                                    contentDescription = "Redo",
+                                    modifier = Modifier.size(22.dp),
+                                    tint = if (redoStack.isNotEmpty()) NothingThemeColors.iconActive else NothingThemeColors.iconInactive,
+                                )
+                            }
                         }
                     }
                 }

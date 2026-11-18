@@ -1,6 +1,7 @@
 package com.example.nomemo.ui.compose
 
 import android.net.Uri
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
@@ -9,6 +10,11 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Alarm
 import androidx.compose.material.icons.outlined.Check
@@ -19,6 +25,7 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import com.example.nomemo.data.model.ChecklistItem
+import com.example.nomemo.ledger.ExpenseParser
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -85,6 +92,9 @@ fun BentoCardComposable(
     }
     val firstImageUri = remember(note.imageUris) { note.imageUris.firstOrNull() }
     var isUnlockedLocally by remember(note.id) { mutableStateOf(!note.isLocked) }
+    val ledgerAnalysis = remember(note.body, note.title) {
+        ExpenseParser.parse("${note.title}\n${note.body}")
+    }
 
     FrostedBentoCard(
         isSelected = isSelected,
@@ -337,9 +347,10 @@ fun BentoCardComposable(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    val footerText = when (note.type) {
-                        NoteType.CHECKLIST -> "$formattedDate • ${note.checklistItems.size} ITEMS"
-                        NoteType.AUDIO -> "$formattedDate • AUDIO MEMO"
+                    val footerText = when {
+                        ledgerAnalysis.isLedgerMode -> "$formattedDate • ${ledgerAnalysis.entries.size} EXP"
+                        note.type == NoteType.CHECKLIST -> "$formattedDate • ${note.checklistItems.size} ITEMS"
+                        note.type == NoteType.AUDIO -> "$formattedDate • AUDIO MEMO"
                         else -> "$formattedDate • $wordCount WORDS"
                     }
                     Text(
@@ -350,19 +361,121 @@ fun BentoCardComposable(
                         letterSpacing = 0.5.sp,
                     )
 
-                    val typeIconRes = when (note.type) {
-                        NoteType.CHECKLIST -> R.drawable.ic_checklist
-                        NoteType.AUDIO -> R.drawable.ic_dock_voice
-                        NoteType.MEDIA -> R.drawable.ic_dock_image
-                        else -> R.drawable.ic_dock_text
+                    if (ledgerAnalysis.isLedgerMode) {
+                        RollingOdometerBadge(
+                            total = ledgerAnalysis.totalExpense,
+                            currencySymbol = ledgerAnalysis.currencySymbol,
+                        )
+                    } else {
+                        val typeIconRes = when (note.type) {
+                            NoteType.CHECKLIST -> R.drawable.ic_checklist
+                            NoteType.AUDIO -> R.drawable.ic_dock_voice
+                            NoteType.MEDIA -> R.drawable.ic_dock_image
+                            else -> R.drawable.ic_dock_text
+                        }
+                        Icon(
+                            painter = painterResource(id = typeIconRes),
+                            contentDescription = "Note Type",
+                            tint = NothingThemeColors.textMuted,
+                            modifier = Modifier.size(11.dp),
+                        )
                     }
-                    Icon(
-                        painter = painterResource(id = typeIconRes),
-                        contentDescription = "Note Type",
-                        tint = NothingThemeColors.textMuted,
-                        modifier = Modifier.size(11.dp),
+                }
+            }
+
+            // Razor-thin 2.dp horizontal progress bar along the bottom edge for spending limit /cap
+            if (ledgerAnalysis.isLedgerMode && ledgerAnalysis.capAmount != null && ledgerAnalysis.capAmount > 0) {
+                val targetFraction = ledgerAnalysis.capProgressFraction ?: 0f
+                val animatedProgress by animateFloatAsState(
+                    targetValue = targetFraction,
+                    animationSpec = tween(durationMillis = 350, easing = FastOutSlowInEasing),
+                    label = "ledgerCapProgressBar",
+                )
+                val barColor = if (ledgerAnalysis.isCapExceededOrNearLimit) {
+                    NothingThemeColors.accentCrimson
+                } else {
+                    Color(0xFFFFFFFF)
+                }
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(2.dp)
+                        .background(NothingThemeColors.surfaceBorder),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(fraction = animatedProgress)
+                            .height(2.dp)
+                            .background(barColor),
                     )
                 }
+            }
+        }
+    }
+}
+
+/**
+ * Clean dot-matrix/monospace total badge (e.g., "TOTAL ₹1,450") using rolling odometer digit animation.
+ */
+@Composable
+fun RollingOdometerBadge(
+    total: Double,
+    currencySymbol: String = "₹",
+    modifier: Modifier = Modifier,
+) {
+    val formatted = remember(total) {
+        ExpenseParser.formatAmountWithCommas(total)
+    }
+
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(4.dp))
+            .background(NothingThemeColors.tabTrackBackground)
+            .border(1.dp, NothingThemeColors.surfaceBorder, RoundedCornerShape(4.dp))
+            .padding(horizontal = 6.dp, vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = "TOTAL $currencySymbol",
+            fontFamily = FontFamily.Monospace,
+            fontSize = 9.sp,
+            fontWeight = FontWeight.Bold,
+            color = NothingThemeColors.textPrimary,
+            letterSpacing = 0.5.sp,
+        )
+        Spacer(modifier = Modifier.width(2.dp))
+        formatted.forEachIndexed { idx, char ->
+            if (char.isDigit()) {
+                AnimatedContent(
+                    targetState = char,
+                    transitionSpec = {
+                        if (targetState >= initialState) {
+                            (slideInVertically(animationSpec = tween(280, easing = FastOutSlowInEasing)) { height -> height } + fadeIn())
+                                .togetherWith(slideOutVertically(animationSpec = tween(280, easing = FastOutSlowInEasing)) { height -> -height } + fadeOut())
+                        } else {
+                            (slideInVertically(animationSpec = tween(280, easing = FastOutSlowInEasing)) { height -> -height } + fadeIn())
+                                .togetherWith(slideOutVertically(animationSpec = tween(280, easing = FastOutSlowInEasing)) { height -> height } + fadeOut())
+                        }
+                    },
+                    label = "odometer_digit_$idx",
+                ) { digitChar ->
+                    Text(
+                        text = digitChar.toString(),
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = NothingThemeColors.textPrimary,
+                    )
+                }
+            } else {
+                Text(
+                    text = char.toString(),
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = NothingThemeColors.textPrimary,
+                )
             }
         }
     }
