@@ -21,6 +21,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -79,7 +82,12 @@ fun NothingArchiveVaultScreen(
                         },
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("←", fontFamily = FontFamily.Monospace, fontSize = 20.sp, color = Color.White)
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                        contentDescription = "Back",
+                        tint = Color.White,
+                        modifier = Modifier.size(20.dp),
+                    )
                 }
 
                 Spacer(modifier = Modifier.width(12.dp))
@@ -181,7 +189,7 @@ fun NothingArchiveVaultScreen(
                                                 .padding(horizontal = 8.dp, vertical = 4.dp),
                                         ) {
                                             Text(
-                                                text = "SHRED ✕",
+                                                text = "SHRED",
                                                 fontFamily = FontFamily.Monospace,
                                                 fontSize = 9.sp,
                                                 fontWeight = FontWeight.Bold,

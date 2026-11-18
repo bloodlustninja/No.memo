@@ -32,4 +32,6 @@ data class Note(
     val colorAccent: String? = null,
     val revisions: List<NoteRevision> = emptyList(),
     val reminderTimestamp: Long? = null,
+    val isBurn: Boolean = false,
+    val burnExpiresAt: Long? = null,
 )

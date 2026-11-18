@@ -7,7 +7,7 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import com.example.nomemo.data.entity.Note
 
-@Database(entities = [Note::class], version = 4, exportSchema = false)
+@Database(entities = [Note::class], version = 5, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
 

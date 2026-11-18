@@ -1,9 +1,20 @@
 package com.example.nomemo.ui.compose
 
 import android.net.Uri
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Alarm
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.LocalFireDepartment
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.LockOpen
+import androidx.compose.material.icons.outlined.PushPin
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
+import com.example.nomemo.data.model.ChecklistItem
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -119,42 +130,88 @@ fun BentoCardComposable(
                     )
 
                     Row(verticalAlignment = Alignment.CenterVertically) {
+                        // Burn Countdown Badge (e.g., "23H")
+                        if (note.isBurn) {
+                            val remainingMs = (note.burnExpiresAt ?: (note.timestamp + 24 * 3600 * 1000L)) - System.currentTimeMillis()
+                            val hours = maxOf(0L, remainingMs / (1000 * 3600))
+                            val countdownText = if (hours > 0) "${hours}H" else "${maxOf(1L, remainingMs / (1000 * 60))}M"
+
+                            Row(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(NothingThemeColors.accentCrimson.copy(alpha = 0.15f))
+                                    .border(1.dp, NothingThemeColors.accentCrimson, RoundedCornerShape(6.dp))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.LocalFireDepartment,
+                                    contentDescription = "Burn Note",
+                                    tint = NothingThemeColors.accentCrimson,
+                                    modifier = Modifier.size(12.dp),
+                                )
+                                Spacer(modifier = Modifier.width(3.dp))
+                                Text(
+                                    text = countdownText,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = NothingThemeColors.accentCrimson,
+                                    letterSpacing = 0.5.sp,
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(6.dp))
+                        }
+
                         if (isSelectionMode) {
                             Box(
                                 modifier = Modifier
                                     .size(18.dp)
                                     .clip(CircleShape)
-                                    .background(if (isSelected) NothingThemeColors.accentCrimson else Color(0x33FFFFFF))
-                                    .border(1.2.dp, if (isSelected) Color.White else Color(0x66FFFFFF), CircleShape),
+                                    .background(if (isSelected) NothingThemeColors.iconActive else Color.Transparent)
+                                    .border(1.dp, if (isSelected) NothingThemeColors.iconActive else NothingThemeColors.surfaceBorder, CircleShape),
                                 contentAlignment = Alignment.Center,
                             ) {
                                 if (isSelected) {
-                                    Text("✓", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                    Icon(
+                                        imageVector = Icons.Outlined.Check,
+                                        contentDescription = "Selected",
+                                        tint = Color.Black,
+                                        modifier = Modifier.size(12.dp),
+                                    )
                                 }
                             }
                         } else {
                             if (note.reminderTimestamp != null && note.reminderTimestamp > System.currentTimeMillis()) {
-                                Text("⏰", fontSize = 10.sp)
+                                Icon(
+                                    imageVector = Icons.Outlined.Alarm,
+                                    contentDescription = "Reminder",
+                                    tint = NothingThemeColors.iconInactive,
+                                    modifier = Modifier.size(14.dp),
+                                )
                                 Spacer(modifier = Modifier.width(4.dp))
                             }
                             if (note.isLocked) {
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = if (isUnlockedLocally) "🔓" else "🔒",
-                                    fontSize = 11.sp,
-                                    modifier = Modifier.clickable {
-                                        com.example.nomemo.ui.anim.NothingAudioFeedback.playLockBolt()
-                                        onLockToggle?.invoke()
-                                    },
+                                Icon(
+                                    imageVector = if (isUnlockedLocally) Icons.Outlined.LockOpen else Icons.Outlined.Lock,
+                                    contentDescription = "Lock",
+                                    tint = NothingThemeColors.iconInactive,
+                                    modifier = Modifier
+                                        .size(14.dp)
+                                        .clickable {
+                                            com.example.nomemo.ui.anim.NothingAudioFeedback.playLockBolt()
+                                            onLockToggle?.invoke()
+                                        },
                                 )
                             }
                             if (note.isPinned) {
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Icon(
-                                    painter = painterResource(id = R.drawable.ic_pin),
+                                    imageVector = Icons.Outlined.PushPin,
                                     contentDescription = "Pinned",
-                                    tint = NothingThemeColors.accentCrimson,
-                                    modifier = Modifier.size(13.dp),
+                                    tint = NothingThemeColors.iconActive,
+                                    modifier = Modifier.size(14.dp),
                                 )
                             }
                         }
@@ -177,7 +234,7 @@ fun BentoCardComposable(
                             text = "░░ GLYPH LOCKED // TAP TO REVEAL ░░",
                             fontFamily = FontFamily.Monospace,
                             fontSize = 10.sp,
-                            color = NothingThemeColors.accentCrimson,
+                            color = NothingThemeColors.textSecondary,
                             letterSpacing = 1.sp,
                         )
                     }
@@ -194,59 +251,15 @@ fun BentoCardComposable(
                         )
                     }
 
-                    // Interactive Checklist items (direct in-card completion!)
+                    // Interactive Checklist items (direct in-card completion with smooth strikethrough animation)
                     if (note.type == NoteType.CHECKLIST && note.checklistItems.isNotEmpty()) {
                         Spacer(modifier = Modifier.height(8.dp))
                         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             note.checklistItems.take(4).forEach { item ->
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clip(RoundedCornerShape(6.dp))
-                                        .clickable {
-                                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                            com.example.nomemo.ui.anim.NothingAudioFeedback.playCheckChime()
-                                            onChecklistToggle?.invoke(item.id)
-                                        }
-                                        .padding(vertical = 2.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(14.dp)
-                                            .clip(RoundedCornerShape(3.dp))
-                                            .background(
-                                                if (item.isChecked) NothingThemeColors.accentCrimson
-                                                else Color.Transparent,
-                                            )
-                                            .border(
-                                                width = 1.dp,
-                                                color = if (item.isChecked) NothingThemeColors.accentCrimson
-                                                else NothingThemeColors.textSecondary,
-                                                shape = RoundedCornerShape(3.dp),
-                                            ),
-                                        contentAlignment = Alignment.Center,
-                                    ) {
-                                        if (item.isChecked) {
-                                            Text(
-                                                text = "✓",
-                                                color = Color.White,
-                                                fontSize = 9.sp,
-                                                fontWeight = FontWeight.Bold,
-                                            )
-                                        }
-                                    }
-
-                                    Spacer(modifier = Modifier.width(6.dp))
-
-                                    Text(
-                                        text = item.text,
-                                        fontSize = 12.sp,
-                                        color = if (item.isChecked) NothingThemeColors.textMuted else NothingThemeColors.textSecondary,
-                                        textDecoration = if (item.isChecked) TextDecoration.LineThrough else TextDecoration.None,
-                                        maxLines = 1,
-                                    )
-                                }
+                                BentoChecklistItemRow(
+                                    item = item,
+                                    onToggle = { onChecklistToggle?.invoke(item.id) },
+                                )
                             }
                             if (note.checklistItems.size > 4) {
                                 Text(
@@ -254,7 +267,7 @@ fun BentoCardComposable(
                                     fontFamily = FontFamily.Monospace,
                                     fontSize = 9.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = NothingThemeColors.accentCrimson,
+                                    color = NothingThemeColors.iconInactive,
                                     letterSpacing = 0.5.sp,
                                 )
                             }
@@ -336,5 +349,84 @@ fun BentoCardComposable(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun BentoChecklistItemRow(
+    item: ChecklistItem,
+    onToggle: () -> Unit,
+) {
+    val haptic = LocalHapticFeedback.current
+    val progress by animateFloatAsState(
+        targetValue = if (item.isChecked) 1f else 0f,
+        animationSpec = tween(durationMillis = 260, easing = FastOutSlowInEasing),
+        label = "strikethroughProgress",
+    )
+    val textColor by animateColorAsState(
+        targetValue = if (item.isChecked) NothingThemeColors.textMuted else NothingThemeColors.textSecondary,
+        animationSpec = tween(durationMillis = 260),
+        label = "textColor",
+    )
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(6.dp))
+            .clickable {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                com.example.nomemo.ui.anim.NothingAudioFeedback.playCheckChime()
+                onToggle()
+            }
+            .padding(vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(14.dp)
+                .clip(RoundedCornerShape(3.dp))
+                .background(
+                    if (item.isChecked) NothingThemeColors.iconActive
+                    else Color.Transparent,
+                )
+                .border(
+                    width = 1.dp,
+                    color = if (item.isChecked) NothingThemeColors.iconActive
+                    else NothingThemeColors.iconInactive,
+                    shape = RoundedCornerShape(3.dp),
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (item.isChecked) {
+                Icon(
+                    imageVector = Icons.Outlined.Check,
+                    contentDescription = "Completed",
+                    tint = Color.Black,
+                    modifier = Modifier.size(10.dp),
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.width(6.dp))
+
+        Text(
+            text = item.text,
+            fontSize = 12.sp,
+            color = textColor,
+            maxLines = 1,
+            modifier = Modifier.drawWithContent {
+                drawContent()
+                if (progress > 0.01f) {
+                    val strokeW = 1.2.dp.toPx()
+                    val y = size.height / 2f
+                    drawLine(
+                        color = textColor,
+                        start = Offset(0f, y),
+                        end = Offset(size.width * progress, y),
+                        strokeWidth = strokeW,
+                    )
+                }
+            },
+        )
     }
 }

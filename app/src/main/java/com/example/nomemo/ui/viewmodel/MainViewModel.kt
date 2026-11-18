@@ -51,7 +51,14 @@ class MainViewModel @JvmOverloads constructor(
         searchQuery,
         activeTagFilter,
     ) { notes, filter, query, tagFilter ->
-        var list = notes
+        val now = System.currentTimeMillis()
+        val expiredNotes = notes.filter { it.isBurn && it.burnExpiresAt != null && it.burnExpiresAt <= now }
+        if (expiredNotes.isNotEmpty()) {
+            viewModelScope.launch {
+                expiredNotes.forEach { repository.deleteNote(it) }
+            }
+        }
+        var list = notes.filter { !it.isBurn || it.burnExpiresAt == null || it.burnExpiresAt > now }
 
         // 1. Tag filter
         if (!tagFilter.isNullOrBlank()) {

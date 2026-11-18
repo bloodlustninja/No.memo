@@ -24,6 +24,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -144,7 +147,7 @@ fun FlashNoteOverlay(
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(8.dp))
-                                    .background(if (isChecklistMode) NothingThemeColors.accentCrimson else NothingThemeColors.tabTrackBackground)
+                                    .background(if (isChecklistMode) NothingThemeColors.surface else NothingThemeColors.tabTrackBackground)
                                     .border(1.dp, NothingThemeColors.tabTrackBorder, RoundedCornerShape(8.dp))
                                     .clickable {
                                         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -153,7 +156,7 @@ fun FlashNoteOverlay(
                                     .padding(horizontal = 8.dp, vertical = 3.dp),
                             ) {
                                 Text(
-                                    text = if (isChecklistMode) "✓ CHECKLIST" else "• NOTE",
+                                    text = if (isChecklistMode) "CHECKLIST" else "NOTE",
                                     fontFamily = FontFamily.Monospace,
                                     fontSize = 9.sp,
                                     fontWeight = FontWeight.Bold,
@@ -164,13 +167,13 @@ fun FlashNoteOverlay(
                             Spacer(modifier = Modifier.width(8.dp))
 
                             // Close Dismiss Button
-                            Text(
-                                text = "✕",
-                                fontSize = 14.sp,
-                                color = NothingThemeColors.textMuted,
+                            Icon(
+                                imageVector = Icons.Outlined.Close,
+                                contentDescription = "Close",
+                                tint = NothingThemeColors.iconInactive,
                                 modifier = Modifier
-                                    .clickable { onDismiss() }
-                                    .padding(4.dp),
+                                    .size(20.dp)
+                                    .clickable { onDismiss() },
                             )
                         }
                     }
@@ -187,7 +190,7 @@ fun FlashNoteOverlay(
                             fontWeight = FontWeight.Bold,
                             color = NothingThemeColors.textPrimary,
                         ),
-                        cursorBrush = SolidColor(NothingThemeColors.accentCrimson),
+                        cursorBrush = SolidColor(NothingThemeColors.iconActive),
                         singleLine = true,
                         decorationBox = { innerTextField ->
                             if (title.isEmpty()) {
@@ -215,7 +218,7 @@ fun FlashNoteOverlay(
                             color = NothingThemeColors.textSecondary,
                             lineHeight = 20.sp,
                         ),
-                        cursorBrush = SolidColor(NothingThemeColors.accentCrimson),
+                        cursorBrush = SolidColor(NothingThemeColors.iconActive),
                         minLines = 4,
                         maxLines = 8,
                         decorationBox = { innerTextField ->
@@ -247,7 +250,7 @@ fun FlashNoteOverlay(
                                     text = "#$tag",
                                     fontFamily = FontFamily.Monospace,
                                     fontSize = 10.sp,
-                                    color = NothingThemeColors.accentCrimson,
+                                    color = NothingThemeColors.textSecondary,
                                 )
                             }
                         }
@@ -271,10 +274,10 @@ fun FlashNoteOverlay(
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(16.dp))
-                                .background(NothingThemeColors.accentCrimson)
+                                .background(NothingThemeColors.iconActive)
                                 .clickable {
                                     if (title.isNotBlank() || body.isNotBlank()) {
-                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                         val finalNote = if (isChecklistMode) {
                                             val items = body.lines()
                                                 .filter { it.isNotBlank() }
@@ -308,7 +311,7 @@ fun FlashNoteOverlay(
                                 fontFamily = FontFamily.Monospace,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color.White,
+                                color = Color.Black,
                                 letterSpacing = 1.sp,
                             )
                         }

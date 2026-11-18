@@ -17,6 +17,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Pause
+import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -139,19 +143,19 @@ fun DotMatrixAudioPlayer(
                 modifier = Modifier
                     .size(36.dp)
                     .clip(CircleShape)
-                    .background(if (isPlaying) NothingThemeColors.accentCrimson else NothingThemeColors.surface)
+                    .background(if (isPlaying) NothingThemeColors.iconActive else NothingThemeColors.surface)
                     .border(1.dp, NothingThemeColors.surfaceBorder, CircleShape)
                     .clickable {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         if (isPlaying) pausePlayback() else startPlayback()
                     },
                 contentAlignment = Alignment.Center,
             ) {
-                Text(
-                    text = if (isPlaying) "❚❚" else "▶",
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = 11.sp,
-                    color = if (isPlaying) Color.White else NothingThemeColors.textPrimary,
+                Icon(
+                    imageVector = if (isPlaying) Icons.Outlined.Pause else Icons.Outlined.PlayArrow,
+                    contentDescription = if (isPlaying) "Pause" else "Play",
+                    tint = if (isPlaying) Color.Black else NothingThemeColors.iconActive,
+                    modifier = Modifier.size(18.dp),
                 )
             }
 

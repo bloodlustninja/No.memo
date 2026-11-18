@@ -32,6 +32,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Fingerprint
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -159,17 +164,17 @@ fun NothingBiometricLockOverlay(
                                 )
                             }
 
-                            Text(
-                                text = "✕",
-                                color = NothingThemeColors.textMuted,
-                                fontSize = 16.sp,
+                            Icon(
+                                imageVector = Icons.Outlined.Close,
+                                contentDescription = "Close",
+                                tint = NothingThemeColors.iconInactive,
                                 modifier = Modifier
+                                    .size(20.dp)
                                     .clip(CircleShape)
                                     .clickable {
                                         NothingAudioFeedback.playTactileClick()
                                         onDismiss()
-                                    }
-                                    .padding(4.dp),
+                                    },
                             )
                         }
 
@@ -269,13 +274,13 @@ fun NothingBiometricLockOverlay(
                                     }
                                 }
 
-                                // Center Fingerprint Icon
+                                // Center Fingerprint / Check Icon
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Text(
-                                        text = if (scanProgress >= 1f) "✓" else "◎",
-                                        fontFamily = FontFamily.Monospace,
-                                        fontSize = 32.sp,
-                                        color = if (scanProgress >= 1f) Color(0xFF00FF66) else Color.White.copy(alpha = pulseAlpha),
+                                    Icon(
+                                        imageVector = if (scanProgress >= 1f) Icons.Outlined.Check else Icons.Outlined.Fingerprint,
+                                        contentDescription = "Biometric Scan",
+                                        tint = if (scanProgress >= 1f) Color.White else Color.White.copy(alpha = pulseAlpha),
+                                        modifier = Modifier.size(36.dp),
                                     )
                                 }
                             }

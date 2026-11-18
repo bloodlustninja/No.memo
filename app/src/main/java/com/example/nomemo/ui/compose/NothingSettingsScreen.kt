@@ -364,7 +364,7 @@ fun NothingSettingsScreen(
                                         color = NothingThemeColors.textMuted,
                                     )
                                 }
-                                Text("PURGE ✕", fontFamily = FontFamily.Monospace, fontSize = 11.sp, color = NothingThemeColors.accentCrimson)
+                                Text("PURGE", fontFamily = FontFamily.Monospace, fontSize = 11.sp, color = NothingThemeColors.accentCrimson)
                             }
                         }
                     }

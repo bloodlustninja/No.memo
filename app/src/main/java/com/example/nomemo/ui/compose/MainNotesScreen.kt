@@ -36,6 +36,15 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Timer
+import androidx.compose.material.icons.outlined.Archive
+import androidx.compose.material.icons.outlined.Checklist
+import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.Hub
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.PushPin
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -229,13 +238,18 @@ fun MainNotesScreen(
                                 .size(38.dp)
                                 .clip(CircleShape)
                                 .clickable {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                     com.example.nomemo.ui.anim.NothingAudioFeedback.playTactileClick()
                                     showFocusTimer = true
                                 },
                             contentAlignment = Alignment.Center,
                         ) {
-                            Text("⏱", fontSize = 16.sp)
+                            Icon(
+                                imageVector = Icons.Outlined.Timer,
+                                contentDescription = "Focus Timer",
+                                tint = NothingThemeColors.iconInactive,
+                                modifier = Modifier.size(20.dp),
+                            )
                         }
 
                         Spacer(modifier = Modifier.width(6.dp))
@@ -246,13 +260,18 @@ fun MainNotesScreen(
                                 .size(38.dp)
                                 .clip(CircleShape)
                                 .clickable {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                     com.example.nomemo.ui.anim.NothingAudioFeedback.playTactileClick()
                                     showArchiveVault = true
                                 },
                             contentAlignment = Alignment.Center,
                         ) {
-                            Text("📦", fontSize = 15.sp)
+                            Icon(
+                                imageVector = Icons.Outlined.Archive,
+                                contentDescription = "Vault",
+                                tint = NothingThemeColors.iconInactive,
+                                modifier = Modifier.size(20.dp),
+                            )
                         }
 
                         Spacer(modifier = Modifier.width(6.dp))
@@ -263,13 +282,18 @@ fun MainNotesScreen(
                                 .size(38.dp)
                                 .clip(CircleShape)
                                 .clickable {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                     com.example.nomemo.ui.anim.NothingAudioFeedback.playTactileClick()
                                     showKnowledgeGraph = true
                                 },
                             contentAlignment = Alignment.Center,
                         ) {
-                            Text("🕸", fontSize = 15.sp)
+                            Icon(
+                                imageVector = Icons.Outlined.Hub,
+                                contentDescription = "Knowledge Graph",
+                                tint = NothingThemeColors.iconInactive,
+                                modifier = Modifier.size(20.dp),
+                            )
                         }
 
                         Spacer(modifier = Modifier.width(6.dp))
@@ -280,17 +304,18 @@ fun MainNotesScreen(
                                 .size(38.dp)
                                 .clip(CircleShape)
                                 .clickable {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                     com.example.nomemo.ui.anim.NothingAudioFeedback.playTactileClick()
                                     isBatchMode = !isBatchMode
                                     if (!isBatchMode) selectedNoteIds.clear()
                                 },
                             contentAlignment = Alignment.Center,
                         ) {
-                            Text(
-                                text = "☑",
-                                fontSize = 16.sp,
-                                color = if (isBatchMode) NothingThemeColors.accentCrimson else NothingThemeColors.textPrimary,
+                            Icon(
+                                imageVector = Icons.Outlined.Checklist,
+                                contentDescription = "Batch Select",
+                                tint = if (isBatchMode) NothingThemeColors.iconActive else NothingThemeColors.iconInactive,
+                                modifier = Modifier.size(20.dp),
                             )
                         }
 
@@ -302,16 +327,16 @@ fun MainNotesScreen(
                                 .size(38.dp)
                                 .clip(CircleShape)
                                 .clickable {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                     onSettingsClick()
                                 },
                             contentAlignment = Alignment.Center,
                         ) {
                             Icon(
-                                painter = painterResource(id = R.drawable.ic_settings),
+                                imageVector = Icons.Outlined.Settings,
                                 contentDescription = "Settings",
-                                tint = NothingThemeColors.textPrimary,
-                                modifier = Modifier.size(19.dp),
+                                tint = NothingThemeColors.iconInactive,
+                                modifier = Modifier.size(20.dp),
                             )
                         }
                     }
@@ -590,66 +615,117 @@ fun MainNotesScreen(
                     Row(
                         modifier = Modifier
                             .clip(RoundedCornerShape(28.dp))
-                            .background(Color(0xE6141418))
-                            .border(1.2.dp, Color(0x33FFFFFF), RoundedCornerShape(28.dp))
-                            .padding(horizontal = 18.dp, vertical = 12.dp),
+                            .background(NothingThemeColors.surface)
+                            .border(1.dp, NothingThemeColors.surfaceBorder, RoundedCornerShape(28.dp))
+                            .padding(horizontal = 16.dp, vertical = 10.dp),
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(
-                            text = "📌 PIN",
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (selectedNotes.isNotEmpty()) Color.White else Color.Gray,
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.clickable(enabled = selectedNotes.isNotEmpty()) {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                 com.example.nomemo.ui.anim.NothingAudioFeedback.playTactileClick()
                                 val anyUnpinned = selectedNotes.any { !it.isPinned }
                                 onBulkPin?.invoke(selectedNotes, anyUnpinned)
                                 isBatchMode = false
                                 selectedNoteIds.clear()
                             },
-                        )
-                        Text(
-                            text = "🔒 LOCK",
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (selectedNotes.isNotEmpty()) Color.White else Color.Gray,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.PushPin,
+                                contentDescription = "Pin",
+                                modifier = Modifier.size(16.dp),
+                                tint = if (selectedNotes.isNotEmpty()) NothingThemeColors.iconActive else NothingThemeColors.iconInactive,
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "PIN",
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (selectedNotes.isNotEmpty()) NothingThemeColors.iconActive else NothingThemeColors.iconInactive,
+                            )
+                        }
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.clickable(enabled = selectedNotes.isNotEmpty()) {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                 com.example.nomemo.ui.anim.NothingAudioFeedback.playLockToggle(true)
                                 val anyUnlocked = selectedNotes.any { !it.isLocked }
                                 onBulkLock?.invoke(selectedNotes, anyUnlocked)
                                 isBatchMode = false
                                 selectedNoteIds.clear()
                             },
-                        )
-                        Text(
-                            text = "📦 VAULT",
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (selectedNotes.isNotEmpty()) Color.White else Color.Gray,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Lock,
+                                contentDescription = "Lock",
+                                modifier = Modifier.size(16.dp),
+                                tint = if (selectedNotes.isNotEmpty()) NothingThemeColors.iconActive else NothingThemeColors.iconInactive,
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "LOCK",
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (selectedNotes.isNotEmpty()) NothingThemeColors.iconActive else NothingThemeColors.iconInactive,
+                            )
+                        }
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.clickable(enabled = selectedNotes.isNotEmpty()) {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                 com.example.nomemo.ui.anim.NothingAudioFeedback.playTactileClick()
                                 onBulkArchive?.invoke(selectedNotes)
                                 isBatchMode = false
                                 selectedNoteIds.clear()
                             },
-                        )
-                        Text(
-                            text = "🗑 SHRED",
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (selectedNotes.isNotEmpty()) NothingThemeColors.accentCrimson else Color.Gray,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Archive,
+                                contentDescription = "Vault",
+                                modifier = Modifier.size(16.dp),
+                                tint = if (selectedNotes.isNotEmpty()) NothingThemeColors.iconActive else NothingThemeColors.iconInactive,
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "VAULT",
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (selectedNotes.isNotEmpty()) NothingThemeColors.iconActive else NothingThemeColors.iconInactive,
+                            )
+                        }
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.clickable(enabled = selectedNotes.isNotEmpty()) {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                 com.example.nomemo.ui.anim.NothingAudioFeedback.playTactileClick()
                                 onBulkDelete?.invoke(selectedNotes)
                                 isBatchMode = false
                                 selectedNoteIds.clear()
                             },
-                        )
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.DeleteOutline,
+                                contentDescription = "Shred",
+                                modifier = Modifier.size(16.dp),
+                                tint = if (selectedNotes.isNotEmpty()) NothingThemeColors.accentCrimson else NothingThemeColors.iconInactive,
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "SHRED",
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (selectedNotes.isNotEmpty()) NothingThemeColors.accentCrimson else NothingThemeColors.iconInactive,
+                            )
+                        }
                     }
                 } else {
                     FloatingCapsuleDockView(
@@ -801,7 +877,7 @@ fun FloatingCapsuleDockView(
             Icon(
                 painter = painterResource(id = R.drawable.ic_dock_voice),
                 contentDescription = "Voice Memo",
-                tint = NothingThemeColors.accentCrimson,
+                tint = NothingThemeColors.textPrimary,
                 modifier = Modifier.size(22.dp),
             )
         }

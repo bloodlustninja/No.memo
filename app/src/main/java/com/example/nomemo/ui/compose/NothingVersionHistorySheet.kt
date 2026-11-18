@@ -24,6 +24,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -130,17 +133,17 @@ fun NothingVersionHistorySheet(
                                 )
                             }
 
-                            Text(
-                                text = "✕",
-                                color = NothingThemeColors.textMuted,
-                                fontSize = 16.sp,
+                            Icon(
+                                imageVector = Icons.Outlined.Close,
+                                contentDescription = "Close",
+                                tint = NothingThemeColors.iconInactive,
                                 modifier = Modifier
+                                    .size(20.dp)
                                     .clip(CircleShape)
                                     .clickable {
                                         NothingAudioFeedback.playTactileClick()
                                         onDismiss()
-                                    }
-                                    .padding(4.dp),
+                                    },
                             )
                         }
 

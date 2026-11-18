@@ -26,38 +26,50 @@ import androidx.compose.ui.unit.dp
 val LocalIsDarkTheme = compositionLocalOf { true }
 
 /**
- * Nothing OS 5.0 Dynamic Light / Dark Theme Color Palette.
+ * Nothing OS 5.0 Strict OLED Monochrome Theme Color Palette.
  */
 object NothingThemeColors {
     val background: Color
         @Composable get() = if (LocalIsDarkTheme.current) Color(0xFF000000) else Color(0xFFEBEBEF)
 
     val surface: Color
-        @Composable get() = if (LocalIsDarkTheme.current) Color(0xFF141416) else Color(0xFFF5F5F8)
+        @Composable get() = if (LocalIsDarkTheme.current) Color(0xFF121212) else Color(0xFFF5F5F8)
 
     val surfaceBorder: Color
-        @Composable get() = if (LocalIsDarkTheme.current) Color(0x33FFFFFF) else Color(0x33000000)
+        @Composable get() = if (LocalIsDarkTheme.current) Color(0xFF262626) else Color(0x33000000)
+
+    val cardSurface: Color
+        @Composable get() = if (LocalIsDarkTheme.current) Color(0xFF121212) else Color(0xFFF5F5F8)
+
+    val cardBorder: Color
+        @Composable get() = if (LocalIsDarkTheme.current) Color(0xFF262626) else Color(0x33000000)
+
+    val iconInactive: Color
+        @Composable get() = Color(0xFF8E8E93)
+
+    val iconActive: Color
+        @Composable get() = if (LocalIsDarkTheme.current) Color(0xFFFFFFFF) else Color(0xFF121214)
 
     val textPrimary: Color
         @Composable get() = if (LocalIsDarkTheme.current) Color(0xFFFFFFFF) else Color(0xFF121214)
 
     val textSecondary: Color
-        @Composable get() = if (LocalIsDarkTheme.current) Color(0xFF8E8E93) else Color(0xFF727278)
+        @Composable get() = Color(0xFF8E8E93)
 
     val textMuted: Color
         @Composable get() = if (LocalIsDarkTheme.current) Color(0xFF666666) else Color(0xFF999999)
 
     val tabTrackBackground: Color
-        @Composable get() = if (LocalIsDarkTheme.current) Color(0xFF0C0C0C) else Color(0xFFE0E0E6)
+        @Composable get() = if (LocalIsDarkTheme.current) Color(0xFF121212) else Color(0xFFE0E0E6)
 
     val tabTrackBorder: Color
-        @Composable get() = if (LocalIsDarkTheme.current) Color(0xFF222222) else Color(0xFFCCCCCC)
+        @Composable get() = if (LocalIsDarkTheme.current) Color(0xFF262626) else Color(0xFFCCCCCC)
 
     val dockBackground: Color
-        @Composable get() = if (LocalIsDarkTheme.current) Color(0xE61C1C1E) else Color(0xE6F5F5F8)
+        @Composable get() = if (LocalIsDarkTheme.current) Color(0xFF121212) else Color(0xE6F5F5F8)
 
     val dockBorder: Color
-        @Composable get() = if (LocalIsDarkTheme.current) Color(0x4DFFFFFF) else Color(0x33000000)
+        @Composable get() = if (LocalIsDarkTheme.current) Color(0xFF262626) else Color(0x33000000)
 
     val accentCrimson = Color(0xFFD71921)
 }

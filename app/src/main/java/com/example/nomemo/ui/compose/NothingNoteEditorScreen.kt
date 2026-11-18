@@ -1,11 +1,14 @@
 package com.example.nomemo.ui.compose
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -13,8 +16,6 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -32,48 +33,65 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
+import androidx.compose.material.icons.automirrored.outlined.Redo
+import androidx.compose.material.icons.automirrored.outlined.Undo
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.CheckBox
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.LocalFireDepartment
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.LockOpen
+import androidx.compose.material.icons.outlined.Mic
+import androidx.compose.material.icons.outlined.MoreVert
+import androidx.compose.material.icons.outlined.PushPin
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import coil.compose.AsyncImage
-import com.example.nomemo.R
-import com.example.nomemo.data.SmartNoteIntelligence
 import com.example.nomemo.data.entity.Note
 import com.example.nomemo.data.entity.NoteType
 import com.example.nomemo.data.model.ChecklistItem
 import com.example.nomemo.data.model.NoteRevision
 import com.example.nomemo.export.NothingReceiptExporter
-import com.example.nomemo.reminder.NothingReminderManager
-import com.example.nomemo.voice.AudioRecorderManager
+import com.example.nomemo.voice.VoiceToTextManager
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
-import java.util.Locale
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun NothingNoteEditorScreen(
     initialNote: Note,
@@ -85,12 +103,13 @@ fun NothingNoteEditorScreen(
 ) {
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
-    val scope = rememberCoroutineScope()
 
     var title by remember { mutableStateOf(initialNote.title) }
     var body by remember { mutableStateOf(initialNote.body) }
     var isPinned by remember { mutableStateOf(initialNote.isPinned) }
     var isLocked by remember { mutableStateOf(initialNote.isLocked) }
+    var isBurn by remember { mutableStateOf(initialNote.isBurn) }
+    var burnExpiresAt by remember { mutableStateOf(initialNote.burnExpiresAt) }
     var noteType by remember { mutableStateOf(initialNote.type) }
     val imageUris = remember { mutableStateListOf<String>().apply { addAll(initialNote.imageUris) } }
     val checklistItems = remember { mutableStateListOf<ChecklistItem>().apply { addAll(initialNote.checklistItems) } }
@@ -98,39 +117,54 @@ fun NothingNoteEditorScreen(
     var audioUri by remember { mutableStateOf(initialNote.audioUri) }
     var audioDurationMs by remember { mutableStateOf(initialNote.audioDurationMs) }
     var audioWaveform by remember { mutableStateOf(initialNote.audioWaveform) }
-    var showDoodleSheet by remember { mutableStateOf(false) }
-    var isMarkdownPreviewMode by remember { mutableStateOf(false) }
-    var showReminderDialog by remember { mutableStateOf(false) }
-    var reminderTimestamp by remember { mutableStateOf(initialNote.reminderTimestamp) }
-    var showHistorySheet by remember { mutableStateOf(false) }
     val revisions = remember { mutableStateListOf<NoteRevision>().apply { addAll(initialNote.revisions) } }
 
-    // Audio Recorder
-    val audioRecorder = remember { AudioRecorderManager(context) }
-    val isRecordingAudio by audioRecorder.isRecording.collectAsState()
-    val recordElapsedTime by audioRecorder.elapsedTimeMs.collectAsState()
-    val liveAmplitudeWaveform by audioRecorder.amplitudeWaveform.collectAsState()
+    // Dropdown overflow menu and delete dialog states
+    var showMoreMenu by remember { mutableStateOf(false) }
+    var showDeleteConfirmDialog by remember { mutableStateOf(false) }
+
+    // Voice Dictation (SpeechRecognizer via VoiceToTextManager)
+    val voiceManager = remember { VoiceToTextManager(context) }
+    val isListening by voiceManager.isListening.collectAsState()
+    val spokenText by voiceManager.spokenText.collectAsState()
+    var lastVoiceLength by remember { mutableStateOf(0) }
+
+    LaunchedEffect(spokenText) {
+        if (isListening && spokenText.isNotBlank()) {
+            val delta = spokenText.substring(lastVoiceLength).trim()
+            if (delta.isNotEmpty()) {
+                body = if (body.isBlank()) delta else "$body $delta"
+                lastVoiceLength = spokenText.length
+            }
+        }
+    }
+
+    LaunchedEffect(isListening) {
+        if (!isListening) {
+            lastVoiceLength = 0
+            voiceManager.clearText()
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            voiceManager.stopListening()
+        }
+    }
+
+    val micPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+    ) { isGranted ->
+        if (isGranted) voiceManager.startListening()
+    }
 
     // Undo / Redo Stacks
     val undoStack = remember { ArrayDeque<Pair<String, String>>() }
     val redoStack = remember { ArrayDeque<Pair<String, String>>() }
     var isUndoRedoAction by remember { mutableStateOf(false) }
 
-    // Typing speed calculation
-    var lastTypedTime by remember { mutableStateOf(System.currentTimeMillis()) }
-    var typedCharCountInWindow by remember { mutableStateOf(0) }
-    var calculatedWpm by remember { mutableStateOf(0) }
-
-    val pickImageLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent(),
-    ) { uri: Uri? ->
-        uri?.let {
-            imageUris.add(it.toString())
-        }
-    }
-
     // Auto-save debounced effect
-    LaunchedEffect(title, body, isPinned, isLocked, noteType, imageUris.size, checklistItems.toList(), audioUri) {
+    LaunchedEffect(title, body, isPinned, isLocked, isBurn, burnExpiresAt, noteType, imageUris.size, checklistItems.toList(), audioUri) {
         delay(350L)
         val extractedTags = run {
             val regex = "#([a-zA-Z0-9_]+)".toRegex()
@@ -143,6 +177,8 @@ fun NothingNoteEditorScreen(
             body = body,
             isPinned = isPinned,
             isLocked = isLocked,
+            isBurn = isBurn,
+            burnExpiresAt = burnExpiresAt,
             type = if (checklistItems.isNotEmpty() && noteType != NoteType.AUDIO) NoteType.CHECKLIST else noteType,
             imageUris = imageUris.toList(),
             checklistItems = checklistItems.toList(),
@@ -151,34 +187,10 @@ fun NothingNoteEditorScreen(
             audioWaveform = audioWaveform,
             tags = extractedTags,
             revisions = revisions.toList(),
-            reminderTimestamp = reminderTimestamp,
             timestamp = System.currentTimeMillis(),
         )
         onSaveNote(updatedNote)
     }
-
-    // WPM telemetry tracker
-    LaunchedEffect(body) {
-        if (!isUndoRedoAction) {
-            typedCharCountInWindow++
-            val now = System.currentTimeMillis()
-            val timeDiffSec = (now - lastTypedTime) / 1000f
-            if (timeDiffSec >= 2f) {
-                val wordsInWindow = typedCharCountInWindow / 5f
-                val minutes = timeDiffSec / 60f
-                calculatedWpm = (wordsInWindow / minutes).toInt().coerceIn(0, 180)
-                lastTypedTime = now
-                typedCharCountInWindow = 0
-            }
-        }
-    }
-
-    val wordCount = remember(body, title) {
-        val full = "$title $body".trim()
-        if (full.isBlank()) 0 else full.split("\\s+".toRegex()).size
-    }
-    val charCount = remember(body, title) { "$title $body".trim().length }
-    val readTimeMin = remember(wordCount) { (wordCount / 200).coerceAtLeast(1) }
 
     NothingAppTheme(isDarkTheme = isDarkTheme) {
         Box(
@@ -188,252 +200,182 @@ fun NothingNoteEditorScreen(
                 .statusBarsPadding(),
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
-                // Top Action Bar
+                // TOP ACTION BAR: Back (left), Burn 24h toggle, Pin toggle, More (⋮) (right)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    // Back Button
-                    Box(
-                        modifier = Modifier
-                            .size(38.dp)
-                            .clip(CircleShape)
-                            .clickable {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                onBackClick()
-                            },
-                        contentAlignment = Alignment.Center,
+                    // Back button (left)
+                    IconButton(
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            onBackClick()
+                        },
+                        modifier = Modifier.size(36.dp),
                     ) {
-                        Text(
-                            text = "←",
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = NothingThemeColors.textPrimary,
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                            contentDescription = "Back",
+                            modifier = Modifier.size(20.dp),
+                            tint = NothingThemeColors.iconActive,
                         )
                     }
 
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        // Undo
-                        Box(
-                            modifier = Modifier
-                                .size(36.dp)
-                                .clip(CircleShape)
-                                .clickable {
-                                    if (undoStack.size > 1) {
-                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                        val cur = undoStack.removeLast()
-                                        redoStack.addLast(cur)
-                                        val prev = undoStack.last()
-                                        isUndoRedoAction = true
-                                        title = prev.first
-                                        body = prev.second
-                                        isUndoRedoAction = false
-                                    }
-                                },
-                            contentAlignment = Alignment.Center,
+                    // Right action cluster: Burn 24h, Pin, More (⋮)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        // Burn 24h Toggle
+                        IconButton(
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                isBurn = !isBurn
+                                burnExpiresAt = if (isBurn) System.currentTimeMillis() + 24 * 3600 * 1000L else null
+                            },
+                            modifier = Modifier.size(36.dp),
                         ) {
                             Icon(
-                                painter = painterResource(id = R.drawable.ic_undo),
-                                contentDescription = "Undo",
-                                tint = if (undoStack.size > 1) NothingThemeColors.textPrimary else NothingThemeColors.textMuted,
-                                modifier = Modifier.size(16.dp),
+                                imageVector = Icons.Outlined.LocalFireDepartment,
+                                contentDescription = "Burn 24h",
+                                modifier = Modifier.size(20.dp),
+                                tint = if (isBurn) NothingThemeColors.accentCrimson else NothingThemeColors.iconInactive,
                             )
                         }
 
-                        // Redo
-                        Box(
-                            modifier = Modifier
-                                .size(36.dp)
-                                .clip(CircleShape)
-                                .clickable {
-                                    if (redoStack.isNotEmpty()) {
-                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                        val nxt = redoStack.removeLast()
-                                        undoStack.addLast(nxt)
-                                        isUndoRedoAction = true
-                                        title = nxt.first
-                                        body = nxt.second
-                                        isUndoRedoAction = false
-                                    }
-                                },
-                            contentAlignment = Alignment.Center,
+                        // Pin Toggle
+                        IconButton(
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                isPinned = !isPinned
+                            },
+                            modifier = Modifier.size(36.dp),
                         ) {
                             Icon(
-                                painter = painterResource(id = R.drawable.ic_redo),
-                                contentDescription = "Redo",
-                                tint = if (redoStack.isNotEmpty()) NothingThemeColors.textPrimary else NothingThemeColors.textMuted,
-                                modifier = Modifier.size(16.dp),
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.width(4.dp))
-
-                        // Preview / Edit Markdown Toggle
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(if (isMarkdownPreviewMode) NothingThemeColors.accentCrimson else NothingThemeColors.tabTrackBackground)
-                                .border(1.dp, NothingThemeColors.tabTrackBorder, RoundedCornerShape(8.dp))
-                                .clickable {
-                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                    com.example.nomemo.ui.anim.NothingAudioFeedback.playTactileClick()
-                                    isMarkdownPreviewMode = !isMarkdownPreviewMode
-                                }
-                                .padding(horizontal = 8.dp, vertical = 4.dp),
-                        ) {
-                            Text(
-                                text = if (isMarkdownPreviewMode) "PREVIEW" else "EDIT",
-                                fontFamily = FontFamily.Monospace,
-                                fontSize = 9.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White,
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.width(4.dp))
-
-                        // Receipt Share Button
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(NothingThemeColors.tabTrackBackground)
-                                .border(1.dp, NothingThemeColors.tabTrackBorder, RoundedCornerShape(8.dp))
-                                .clickable {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    com.example.nomemo.ui.anim.NothingAudioFeedback.playTactileClick()
-                                    val currentNote = initialNote.copy(
-                                        title = title,
-                                        body = body,
-                                        checklistItems = checklistItems.toList(),
-                                        tags = run {
-                                            val regex = "#([a-zA-Z0-9_]+)".toRegex()
-                                            regex.findAll("$title $body").map { it.groupValues[1].lowercase() }.distinct().toList()
-                                        },
-                                    )
-                                    NothingReceiptExporter.shareReceipt(context, currentNote)
-                                }
-                                .padding(horizontal = 8.dp, vertical = 4.dp),
-                        ) {
-                            Text(
-                                text = "RECEIPT",
-                                fontFamily = FontFamily.Monospace,
-                                fontSize = 9.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = NothingThemeColors.accentCrimson,
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.width(4.dp))
-
-                        // Reminder Schedule Button
-                        Box(
-                            modifier = Modifier
-                                .size(32.dp)
-                                .clip(CircleShape)
-                                .background(if (reminderTimestamp != null) NothingThemeColors.accentCrimson.copy(alpha = 0.25f) else NothingThemeColors.tabTrackBackground)
-                                .border(1.dp, if (reminderTimestamp != null) NothingThemeColors.accentCrimson else NothingThemeColors.tabTrackBorder, CircleShape)
-                                .clickable {
-                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                    com.example.nomemo.ui.anim.NothingAudioFeedback.playTactileClick()
-                                    showReminderDialog = true
-                                },
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(
-                                text = "⏰",
-                                fontSize = 12.sp,
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.width(4.dp))
-
-                        // Time Machine History
-                        Box(
-                            modifier = Modifier
-                                .size(32.dp)
-                                .clip(CircleShape)
-                                .background(NothingThemeColors.tabTrackBackground)
-                                .border(1.dp, NothingThemeColors.tabTrackBorder, CircleShape)
-                                .clickable {
-                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                    com.example.nomemo.ui.anim.NothingAudioFeedback.playTactileClick()
-                                    showHistorySheet = true
-                                },
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(
-                                text = "⌛",
-                                fontSize = 12.sp,
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.width(4.dp))
-
-                        // Glyph Lock Toggle
-                        Box(
-                            modifier = Modifier
-                                .size(36.dp)
-                                .clip(CircleShape)
-                                .clickable {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    isLocked = !isLocked
-                                },
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(
-                                text = if (isLocked) "🔒" else "🔓",
-                                fontSize = 14.sp,
-                            )
-                        }
-
-                        // Pin Button
-                        Box(
-                            modifier = Modifier
-                                .size(36.dp)
-                                .clip(CircleShape)
-                                .clickable {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    isPinned = !isPinned
-                                },
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.ic_pin),
+                                imageVector = Icons.Outlined.PushPin,
                                 contentDescription = "Pin Note",
-                                tint = if (isPinned) NothingThemeColors.accentCrimson else NothingThemeColors.textSecondary,
-                                modifier = Modifier.size(17.dp),
+                                modifier = Modifier.size(20.dp),
+                                tint = if (isPinned) NothingThemeColors.iconActive else NothingThemeColors.iconInactive,
                             )
                         }
 
-                        // Delete Button
-                        Box(
-                            modifier = Modifier
-                                .size(36.dp)
-                                .clip(CircleShape)
-                                .clickable {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    if (initialNote.id != 0L) {
-                                        onDeleteNote(initialNote.id)
-                                    }
-                                    onBackClick()
+                        // More (⋮) Overflow Menu
+                        Box {
+                            IconButton(
+                                onClick = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    showMoreMenu = true
                                 },
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.ic_delete),
-                                contentDescription = "Delete Note",
-                                tint = NothingThemeColors.accentCrimson,
-                                modifier = Modifier.size(17.dp),
-                            )
+                                modifier = Modifier.size(36.dp),
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.MoreVert,
+                                    contentDescription = "More Options",
+                                    modifier = Modifier.size(20.dp),
+                                    tint = NothingThemeColors.iconInactive,
+                                )
+                            }
+
+                            DropdownMenu(
+                                expanded = showMoreMenu,
+                                onDismissRequest = { showMoreMenu = false },
+                                modifier = Modifier
+                                    .background(NothingThemeColors.surface)
+                                    .border(1.dp, NothingThemeColors.surfaceBorder, RoundedCornerShape(12.dp)),
+                            ) {
+                                // Lock / Unlock Note
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            text = if (isLocked) "UNLOCK NOTE" else "LOCK NOTE",
+                                            fontFamily = FontFamily.Monospace,
+                                            fontSize = 12.sp,
+                                            color = NothingThemeColors.textPrimary,
+                                        )
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = if (isLocked) Icons.Outlined.LockOpen else Icons.Outlined.Lock,
+                                            contentDescription = "Lock Note",
+                                            modifier = Modifier.size(20.dp),
+                                            tint = NothingThemeColors.iconInactive,
+                                        )
+                                    },
+                                    onClick = {
+                                        showMoreMenu = false
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        isLocked = !isLocked
+                                    },
+                                )
+
+                                // Export Receipt
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            text = "EXPORT RECEIPT",
+                                            fontFamily = FontFamily.Monospace,
+                                            fontSize = 12.sp,
+                                            color = NothingThemeColors.textPrimary,
+                                        )
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.AutoMirrored.Outlined.ReceiptLong,
+                                            contentDescription = "Receipt",
+                                            modifier = Modifier.size(20.dp),
+                                            tint = NothingThemeColors.iconInactive,
+                                        )
+                                    },
+                                    onClick = {
+                                        showMoreMenu = false
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        val currentNote = initialNote.copy(
+                                            title = title,
+                                            body = body,
+                                            checklistItems = checklistItems.toList(),
+                                            tags = run {
+                                                val regex = "#([a-zA-Z0-9_]+)".toRegex()
+                                                regex.findAll("$title $body").map { it.groupValues[1].lowercase() }.distinct().toList()
+                                            },
+                                        )
+                                        NothingReceiptExporter.shareReceipt(context, currentNote)
+                                    },
+                                )
+
+                                // Delete Note
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            text = "DELETE NOTE",
+                                            fontFamily = FontFamily.Monospace,
+                                            fontSize = 12.sp,
+                                            color = NothingThemeColors.accentCrimson,
+                                            fontWeight = FontWeight.Bold,
+                                        )
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Outlined.DeleteOutline,
+                                            contentDescription = "Delete Note",
+                                            modifier = Modifier.size(20.dp),
+                                            tint = NothingThemeColors.accentCrimson,
+                                        )
+                                    },
+                                    onClick = {
+                                        showMoreMenu = false
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        showDeleteConfirmDialog = true
+                                    },
+                                )
+                            }
                         }
                     }
                 }
 
-                // Scrollable Editor Content
+                // SCROLLABLE EDITOR CONTENT
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -459,11 +401,11 @@ fun NothingNoteEditorScreen(
                                 color = NothingThemeColors.textPrimary,
                                 letterSpacing = 1.sp,
                             ),
-                            cursorBrush = SolidColor(NothingThemeColors.accentCrimson),
+                            cursorBrush = SolidColor(NothingThemeColors.iconActive),
                             decorationBox = { innerTextField ->
                                 if (title.isEmpty()) {
                                     Text(
-                                        text = "UNTITLED...",
+                                        text = "UNTITLED",
                                         fontFamily = FontFamily.Monospace,
                                         fontSize = 22.sp,
                                         fontWeight = FontWeight.Bold,
@@ -477,7 +419,7 @@ fun NothingNoteEditorScreen(
                         )
                     }
 
-                    // Attached Media Strip
+                    // Attached Images Strip (if any)
                     if (imageUris.isNotEmpty()) {
                         item {
                             Row(
@@ -491,6 +433,7 @@ fun NothingNoteEditorScreen(
                                         modifier = Modifier
                                             .size(120.dp)
                                             .clip(RoundedCornerShape(16.dp))
+                                            .background(NothingThemeColors.surface)
                                             .border(1.dp, NothingThemeColors.surfaceBorder, RoundedCornerShape(16.dp)),
                                     ) {
                                         AsyncImage(
@@ -500,21 +443,24 @@ fun NothingNoteEditorScreen(
                                             modifier = Modifier.fillMaxSize(),
                                         )
 
-                                        // Remove Image Button
-                                        Box(
+                                        IconButton(
+                                            onClick = {
+                                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                                imageUris.remove(uriStr)
+                                            },
                                             modifier = Modifier
                                                 .align(Alignment.TopEnd)
-                                                .padding(6.dp)
+                                                .padding(4.dp)
                                                 .size(24.dp)
                                                 .clip(CircleShape)
-                                                .background(Color.Black.copy(alpha = 0.7f))
-                                                .clickable {
-                                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                                    imageUris.remove(uriStr)
-                                                },
-                                            contentAlignment = Alignment.Center,
+                                                .background(Color.Black.copy(alpha = 0.7f)),
                                         ) {
-                                            Text("✕", color = Color.White, fontSize = 11.sp)
+                                            Icon(
+                                                imageVector = Icons.Outlined.Close,
+                                                contentDescription = "Remove Media",
+                                                tint = Color.White,
+                                                modifier = Modifier.size(14.dp),
+                                            )
                                         }
                                     }
                                 }
@@ -522,7 +468,7 @@ fun NothingNoteEditorScreen(
                         }
                     }
 
-                    // Audio Voice Memo Player
+                    // Audio Voice Memo Player (if present)
                     if (!audioUri.isNullOrBlank()) {
                         item {
                             DotMatrixAudioPlayer(
@@ -533,376 +479,391 @@ fun NothingNoteEditorScreen(
                         }
                     }
 
-                    // Live Audio Recording Card
-                    if (isRecordingAudio) {
-                        item {
-                            FrostedBentoCard(cornerRadius = 16.dp) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(14.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(8.dp)
-                                                .clip(CircleShape)
-                                                .background(NothingThemeColors.accentCrimson),
-                                        )
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        val sec = (recordElapsedTime / 1000).toInt()
-                                        Text(
-                                            text = String.format(Locale.US, "REC // %02d:%02d", sec / 60, sec % 60),
-                                            fontFamily = FontFamily.Monospace,
-                                            fontSize = 11.sp,
-                                            color = NothingThemeColors.accentCrimson,
-                                        )
-                                    }
-
-                                    NothingAudioWaveform(
-                                        isRecording = true,
-                                        barCount = 8,
-                                        maxHeight = 20.dp,
-                                    )
-
-                                    Box(
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(10.dp))
-                                            .background(NothingThemeColors.accentCrimson)
-                                            .clickable {
-                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                val result = audioRecorder.stopRecording()
-                                                if (result != null) {
-                                                    audioUri = result.file.absolutePath
-                                                    audioDurationMs = result.durationMs
-                                                    audioWaveform = result.waveform
-                                                    noteType = NoteType.AUDIO
-                                                }
-                                            }
-                                            .padding(horizontal = 12.dp, vertical = 6.dp),
-                                    ) {
-                                        Text(
-                                            text = "DONE",
-                                            fontFamily = FontFamily.Monospace,
-                                            fontSize = 10.sp,
-                                            color = Color.White,
-                                            fontWeight = FontWeight.Bold,
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-
                     // Interactive Checklist Items
-                    if (checklistItems.isNotEmpty() || noteType == NoteType.CHECKLIST) {
+                    if (checklistItems.isNotEmpty()) {
                         itemsIndexed(checklistItems) { index, item ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(NothingThemeColors.tabTrackBackground.copy(alpha = 0.5f))
-                                    .padding(horizontal = 10.dp, vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                // Checkbox Box
-                                Box(
-                                    modifier = Modifier
-                                        .size(18.dp)
-                                        .clip(RoundedCornerShape(4.dp))
-                                        .background(if (item.isChecked) NothingThemeColors.accentCrimson else Color.Transparent)
-                                        .border(
-                                            width = 1.dp,
-                                            color = if (item.isChecked) NothingThemeColors.accentCrimson else NothingThemeColors.textSecondary,
-                                            shape = RoundedCornerShape(4.dp),
-                                        )
-                                        .clickable {
-                                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                            checklistItems[index] = item.copy(isChecked = !item.isChecked)
-                                        },
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    if (item.isChecked) {
-                                        Text("✓", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                                    }
-                                }
-
-                                Spacer(modifier = Modifier.width(10.dp))
-
-                                // Item Text Input
-                                BasicTextField(
-                                    value = item.text,
-                                    onValueChange = { newTxt ->
-                                        checklistItems[index] = item.copy(text = newTxt)
-                                    },
-                                    textStyle = TextStyle(
-                                        fontSize = 14.sp,
-                                        color = if (item.isChecked) NothingThemeColors.textMuted else NothingThemeColors.textPrimary,
-                                        textDecoration = if (item.isChecked) TextDecoration.LineThrough else TextDecoration.None,
-                                    ),
-                                    cursorBrush = SolidColor(NothingThemeColors.accentCrimson),
-                                    modifier = Modifier.weight(1f),
-                                )
-
-                                // Delete checklist row
-                                Text(
-                                    text = "✕",
-                                    fontSize = 12.sp,
-                                    color = NothingThemeColors.textMuted,
-                                    modifier = Modifier
-                                        .clickable {
-                                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                            checklistItems.removeAt(index)
-                                        }
-                                        .padding(4.dp),
-                                )
-                            }
-                        }
-
-                        item {
-                            // Add Checklist Item Button
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .border(1.dp, NothingThemeColors.tabTrackBorder, RoundedCornerShape(12.dp))
-                                    .clickable {
+                            EditorChecklistItemRow(
+                                item = item,
+                                onCheckedChange = { isChecked ->
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    checklistItems[index] = item.copy(isChecked = isChecked)
+                                },
+                                onTextChange = { newText ->
+                                    if (newText.contains("\n")) {
                                         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                        checklistItems.add(ChecklistItem(text = ""))
+                                        val clean = newText.replace("\n", "").trim()
+                                        if (clean.isEmpty() && item.text.trim().isEmpty()) {
+                                            // Pressing Enter on an empty item reverts to normal text!
+                                            checklistItems.removeAt(index)
+                                            if (checklistItems.isEmpty()) {
+                                                noteType = NoteType.NOTE
+                                            }
+                                        } else {
+                                            // Pressing Enter continues the checklist!
+                                            checklistItems[index] = item.copy(text = clean)
+                                            checklistItems.add(index + 1, ChecklistItem(text = ""))
+                                        }
+                                    } else {
+                                        checklistItems[index] = item.copy(text = newText)
                                     }
-                                    .padding(vertical = 10.dp),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Text(
-                                    text = "+ ADD ITEM",
-                                    fontFamily = FontFamily.Monospace,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = NothingThemeColors.accentCrimson,
-                                    letterSpacing = 1.sp,
-                                )
-                            }
+                                },
+                                onEnterNext = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    if (item.text.trim().isEmpty()) {
+                                        checklistItems.removeAt(index)
+                                        if (checklistItems.isEmpty()) {
+                                            noteType = NoteType.NOTE
+                                        }
+                                    } else {
+                                        checklistItems.add(index + 1, ChecklistItem(text = ""))
+                                    }
+                                },
+                                onDelete = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    checklistItems.removeAt(index)
+                                    if (checklistItems.isEmpty()) {
+                                        noteType = NoteType.NOTE
+                                    }
+                                },
+                            )
                         }
                     }
 
-                    // Main Note Body
+                    // Main Note Body with Inline Smart Checklist Detection
                     item {
-                        if (isMarkdownPreviewMode) {
-                            NothingMarkdownRenderer(
-                                content = if (body.isBlank()) "*No content to preview yet...*" else body,
-                                modifier = Modifier.fillMaxWidth(),
-                            )
-                        } else {
-                            BasicTextField(
-                                value = body,
-                                onValueChange = {
-                                    body = it
+                        BasicTextField(
+                            value = body,
+                            onValueChange = { newBody ->
+                                // Inline Smart Checklists: typing "[] " or "- " at start of line converts that line
+                                val lines = newBody.split("\n")
+                                val triggerIndex = lines.indexOfFirst { it.startsWith("[] ") || it.startsWith("- ") }
+                                if (triggerIndex != -1) {
+                                    val triggerLine = lines[triggerIndex]
+                                    val itemText = if (triggerLine.startsWith("[] ")) {
+                                        triggerLine.removePrefix("[] ")
+                                    } else {
+                                        triggerLine.removePrefix("- ")
+                                    }
+                                    val remainingLines = lines.toMutableList()
+                                    remainingLines.removeAt(triggerIndex)
+                                    body = remainingLines.joinToString("\n")
+
                                     if (!isUndoRedoAction) {
-                                        undoStack.addLast(Pair(title, it))
+                                        undoStack.addLast(Pair(title, body))
                                         redoStack.clear()
                                     }
-                                },
-                                textStyle = TextStyle(
-                                    fontSize = 15.sp,
-                                    color = NothingThemeColors.textSecondary,
-                                    lineHeight = 24.sp,
-                                ),
-                                cursorBrush = SolidColor(NothingThemeColors.accentCrimson),
-                                minLines = 8,
-                                decorationBox = { innerTextField ->
-                                    if (body.isEmpty() && checklistItems.isEmpty()) {
-                                        Text(
-                                            text = "Start writing your note here...\n\nTips:\n• Use #headers or - [ ] for checklists\n• Use #tags for smart organization\n• Record voice memos from the toolbar below",
-                                            fontSize = 14.sp,
-                                            color = NothingThemeColors.textMuted,
-                                            lineHeight = 22.sp,
-                                        )
+                                    checklistItems.add(ChecklistItem(text = itemText))
+                                    noteType = NoteType.CHECKLIST
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                } else {
+                                    body = newBody
+                                    if (!isUndoRedoAction) {
+                                        undoStack.addLast(Pair(title, newBody))
+                                        redoStack.clear()
                                     }
-                                    innerTextField()
-                                },
-                                modifier = Modifier.fillMaxWidth(),
-                            )
-                        }
+                                }
+                            },
+                            textStyle = TextStyle(
+                                fontSize = 15.sp,
+                                color = NothingThemeColors.textSecondary,
+                                lineHeight = 24.sp,
+                            ),
+                            cursorBrush = SolidColor(NothingThemeColors.iconActive),
+                            minLines = 8,
+                            decorationBox = { innerTextField ->
+                                if (body.isEmpty() && checklistItems.isEmpty()) {
+                                    Text(
+                                        text = "Write something...",
+                                        fontSize = 15.sp,
+                                        color = NothingThemeColors.textMuted,
+                                        lineHeight = 24.sp,
+                                    )
+                                }
+                                innerTextField()
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
                     }
 
                     item {
-                        Spacer(modifier = Modifier.height(60.dp))
+                        Spacer(modifier = Modifier.height(32.dp))
                     }
                 }
 
-                // Markdown & Media Quick Toolbar
+                // BOTTOM KEYBOARD BAR: Clean imePadding() bar with 4 monochrome icon buttons
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(NothingThemeColors.surface)
-                        .border(1.dp, NothingThemeColors.surfaceBorder)
-                        .horizontalScroll(rememberScrollState())
-                        .padding(horizontal = 14.dp, vertical = 6.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    // Header #
-                    ToolbarChip(label = "H#") {
-                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        body = if (body.isEmpty()) "# " else "$body\n# "
-                    }
-
-                    // Checklist
-                    ToolbarChip(label = "[ ] LIST") {
-                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        noteType = NoteType.CHECKLIST
-                        checklistItems.add(ChecklistItem(text = ""))
-                    }
-
-                    // Bold *
-                    ToolbarChip(label = "** BOLD") {
-                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        body = "$body **word** "
-                    }
-
-                    // Code </>
-                    ToolbarChip(label = "</> CODE") {
-                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        body = "$body\n```\ncode\n```\n"
-                    }
-
-                    // Tag #
-                    ToolbarChip(label = "# TAG") {
-                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        body = "$body #idea "
-                    }
-
-                    // Image Attachment
-                    ToolbarChip(label = "📷 PHOTO") {
-                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        pickImageLauncher.launch("image/*")
-                    }
-
-                    // 1-Bit Dot Matrix Doodle
-                    ToolbarChip(label = "✏️ DOODLE") {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        showDoodleSheet = true
-                    }
-
-                    // Audio Record Memo
-                    ToolbarChip(label = if (isRecordingAudio) "⏹ STOP" else "🎙 AUDIO") {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        if (isRecordingAudio) {
-                            val result = audioRecorder.stopRecording()
-                            if (result != null) {
-                                audioUri = result.file.absolutePath
-                                audioDurationMs = result.durationMs
-                                audioWaveform = result.waveform
-                                noteType = NoteType.AUDIO
-                            }
-                        } else {
-                            audioRecorder.startRecording()
-                        }
-                    }
-
-                    ToolbarChip(label = "✨ TIDY") {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        val (cleanedBody, extractedChecklist) = SmartNoteIntelligence.formatAndTidy(body)
-                        body = cleanedBody
-                        if (extractedChecklist.isNotEmpty()) {
-                            checklistItems.addAll(extractedChecklist)
-                            noteType = NoteType.CHECKLIST
-                        }
-                        com.example.nomemo.ui.anim.NothingAudioFeedback.playCheckChime()
-                    }
-                }
-
-                // Bottom Real-Time Telemetry HUD
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(NothingThemeColors.background)
+                        .border(width = 1.dp, color = NothingThemeColors.surfaceBorder)
+                        .imePadding()
                         .navigationBarsPadding()
-                        .padding(horizontal = 16.dp, vertical = 6.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                        .padding(vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    KineticTelemetryValue(
-                        value = if (calculatedWpm > 0) calculatedWpm.toString() else "--",
-                        label = "WPM",
-                    )
-                    KineticTelemetryValue(
-                        value = wordCount.toString(),
-                        label = "WORDS",
-                    )
-                    KineticTelemetryValue(
-                        value = charCount.toString(),
-                        label = "CHARS",
-                    )
-                    KineticTelemetryValue(
-                        value = "~$readTimeMin MIN",
-                        label = "READ",
-                    )
+                    // 1. Checklist Toggle
+                    IconButton(
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            checklistItems.add(ChecklistItem(text = ""))
+                            noteType = NoteType.CHECKLIST
+                        },
+                        modifier = Modifier.size(36.dp),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.CheckBox,
+                            contentDescription = "Checklist Toggle",
+                            modifier = Modifier.size(20.dp),
+                            tint = if (checklistItems.isNotEmpty()) NothingThemeColors.iconActive else NothingThemeColors.iconInactive,
+                        )
+                    }
+
+                    // 2. Voice Dictation (SpeechRecognizer)
+                    IconButton(
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            if (isListening) {
+                                voiceManager.stopListening()
+                            } else {
+                                val hasPerm = ContextCompat.checkSelfPermission(
+                                    context,
+                                    Manifest.permission.RECORD_AUDIO,
+                                ) == PackageManager.PERMISSION_GRANTED
+                                if (hasPerm) {
+                                    voiceManager.startListening()
+                                } else {
+                                    micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                                }
+                            }
+                        },
+                        modifier = Modifier.size(36.dp),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Mic,
+                            contentDescription = "Voice Dictation",
+                            modifier = Modifier.size(20.dp),
+                            tint = if (isListening) NothingThemeColors.iconActive else NothingThemeColors.iconInactive,
+                        )
+                    }
+
+                    // 3. Undo
+                    IconButton(
+                        onClick = {
+                            if (undoStack.size > 1) {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                val cur = undoStack.removeLast()
+                                redoStack.addLast(cur)
+                                val prev = undoStack.last()
+                                isUndoRedoAction = true
+                                title = prev.first
+                                body = prev.second
+                                isUndoRedoAction = false
+                            }
+                        },
+                        enabled = undoStack.size > 1,
+                        modifier = Modifier.size(36.dp),
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Outlined.Undo,
+                            contentDescription = "Undo",
+                            modifier = Modifier.size(20.dp),
+                            tint = if (undoStack.size > 1) NothingThemeColors.iconActive else NothingThemeColors.iconInactive,
+                        )
+                    }
+
+                    // 4. Redo
+                    IconButton(
+                        onClick = {
+                            if (redoStack.isNotEmpty()) {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                val nxt = redoStack.removeLast()
+                                undoStack.addLast(nxt)
+                                isUndoRedoAction = true
+                                title = nxt.first
+                                body = nxt.second
+                                isUndoRedoAction = false
+                            }
+                        },
+                        enabled = redoStack.isNotEmpty(),
+                        modifier = Modifier.size(36.dp),
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Outlined.Redo,
+                            contentDescription = "Redo",
+                            modifier = Modifier.size(20.dp),
+                            tint = if (redoStack.isNotEmpty()) NothingThemeColors.iconActive else NothingThemeColors.iconInactive,
+                        )
+                    }
                 }
             }
 
-            // 1-Bit Dot Matrix Doodle Sheet Overlay
-            if (showDoodleSheet) {
-                DotMatrixDoodleSheet(
-                    onSaveSketch = { sketchPath ->
-                        imageUris.add(sketchPath)
-                        showDoodleSheet = false
+            // Delete Confirmation Dialog (Strict OLED with Nothing Red #D71921 confirmation)
+            if (showDeleteConfirmDialog) {
+                AlertDialog(
+                    onDismissRequest = { showDeleteConfirmDialog = false },
+                    containerColor = NothingThemeColors.surface,
+                    shape = RoundedCornerShape(16.dp),
+                    title = {
+                        Text(
+                            text = "DELETE MEMO?",
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = NothingThemeColors.textPrimary,
+                            letterSpacing = 1.sp,
+                        )
                     },
-                    onDismiss = {
-                        showDoodleSheet = false
+                    text = {
+                        Text(
+                            text = "This action is permanent and cannot be undone.",
+                            fontSize = 13.sp,
+                            color = NothingThemeColors.textSecondary,
+                            lineHeight = 18.sp,
+                        )
+                    },
+                    confirmButton = {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(NothingThemeColors.accentCrimson)
+                                .clickable {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    showDeleteConfirmDialog = false
+                                    if (initialNote.id != 0L) {
+                                        onDeleteNote(initialNote.id)
+                                    }
+                                    onBackClick()
+                                }
+                                .padding(horizontal = 14.dp, vertical = 8.dp),
+                        ) {
+                            Text(
+                                text = "DELETE",
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                            )
+                        }
+                    },
+                    dismissButton = {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .border(1.dp, NothingThemeColors.surfaceBorder, RoundedCornerShape(8.dp))
+                                .clickable {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    showDeleteConfirmDialog = false
+                                }
+                                .padding(horizontal = 14.dp, vertical = 8.dp),
+                        ) {
+                            Text(
+                                text = "CANCEL",
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 12.sp,
+                                color = NothingThemeColors.textSecondary,
+                            )
+                        }
                     },
                 )
             }
-
-            // Scheduled Reminder Dialog
-            NothingReminderDialog(
-                isVisible = showReminderDialog,
-                currentReminder = reminderTimestamp,
-                onSetReminder = { timestamp ->
-                    reminderTimestamp = timestamp
-                    NothingReminderManager.setReminder(context, initialNote.id, title, body, timestamp)
-                },
-                onClearReminder = {
-                    reminderTimestamp = null
-                    NothingReminderManager.cancelReminder(context, initialNote.id)
-                },
-                onDismiss = { showReminderDialog = false },
-            )
-
-            // Time Machine Version History Drawer
-            NothingVersionHistorySheet(
-                isVisible = showHistorySheet,
-                revisions = revisions.toList(),
-                onRestoreRevision = { rev ->
-                    title = rev.title
-                    body = rev.body
-                    showHistorySheet = false
-                },
-                onDismiss = { showHistorySheet = false },
-            )
         }
     }
 }
 
 @Composable
-private fun ToolbarChip(label: String, onClick: () -> Unit) {
-    Box(
+private fun EditorChecklistItemRow(
+    item: ChecklistItem,
+    onCheckedChange: (Boolean) -> Unit,
+    onTextChange: (String) -> Unit,
+    onEnterNext: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    val progress by animateFloatAsState(
+        targetValue = if (item.isChecked) 1f else 0f,
+        animationSpec = tween(durationMillis = 260, easing = FastOutSlowInEasing),
+        label = "strikethroughProgress",
+    )
+    val textColor by animateColorAsState(
+        targetValue = if (item.isChecked) NothingThemeColors.textMuted else NothingThemeColors.textPrimary,
+        animationSpec = tween(durationMillis = 260),
+        label = "textColor",
+    )
+
+    Row(
         modifier = Modifier
+            .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
-            .background(NothingThemeColors.tabTrackBackground)
-            .border(1.dp, NothingThemeColors.tabTrackBorder, RoundedCornerShape(8.dp))
-            .clickable { onClick() }
-            .padding(horizontal = 10.dp, vertical = 6.dp),
-        contentAlignment = Alignment.Center,
+            .background(NothingThemeColors.surface)
+            .border(1.dp, NothingThemeColors.surfaceBorder, RoundedCornerShape(8.dp))
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            text = label,
-            fontFamily = FontFamily.Monospace,
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Bold,
-            color = NothingThemeColors.textPrimary,
+        // Monochrome Checkbox
+        Box(
+            modifier = Modifier
+                .size(18.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(if (item.isChecked) NothingThemeColors.iconActive else Color.Transparent)
+                .border(
+                    width = 1.dp,
+                    color = if (item.isChecked) NothingThemeColors.iconActive else NothingThemeColors.surfaceBorder,
+                    shape = RoundedCornerShape(4.dp),
+                )
+                .clickable { onCheckedChange(!item.isChecked) },
+            contentAlignment = Alignment.Center,
+        ) {
+            if (item.isChecked) {
+                Icon(
+                    imageVector = Icons.Outlined.Check,
+                    contentDescription = "Completed",
+                    tint = Color.Black,
+                    modifier = Modifier.size(12.dp),
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.width(10.dp))
+
+        // Checklist text input
+        BasicTextField(
+            value = item.text,
+            onValueChange = onTextChange,
+            textStyle = TextStyle(
+                fontSize = 14.sp,
+                color = textColor,
+            ),
+            cursorBrush = SolidColor(NothingThemeColors.iconActive),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+            keyboardActions = KeyboardActions(onNext = { onEnterNext() }),
+            modifier = Modifier
+                .weight(1f)
+                .drawWithContent {
+                    drawContent()
+                    if (progress > 0.01f) {
+                        val strokeW = 1.2.dp.toPx()
+                        val y = size.height / 2f
+                        drawLine(
+                            color = textColor,
+                            start = Offset(0f, y),
+                            end = Offset(size.width * progress, y),
+                            strokeWidth = strokeW,
+                        )
+                    }
+                },
         )
+
+        // Delete Row Button
+        IconButton(
+            onClick = onDelete,
+            modifier = Modifier.size(24.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.Close,
+                contentDescription = "Remove Item",
+                modifier = Modifier.size(16.dp),
+                tint = NothingThemeColors.iconInactive,
+            )
+        }
     }
 }
