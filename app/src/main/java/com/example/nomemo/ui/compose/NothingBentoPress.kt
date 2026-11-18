@@ -34,17 +34,16 @@ import androidx.compose.ui.unit.sp
 /**
  * Reusable Jetpack Compose modifier for Nothing OS 5.0 Bento Grid items.
  *
- * Provides a mechanical, industrial feel:
- * - Subtly scales down to 0.97f using a high-stiffness non-bouncy spring (Spring.StiffnessMedium, Spring.DampingRatioNoBouncy).
- * - Triggers HapticFeedbackType.LongPress instantly on pointer down.
- * - Displays an optional subtle color flash/border invert tint during active press state (#D71921).
- * - Executes scale transformations purely via Modifier.graphicsLayer for performance.
+ * Provides a mechanical 120Hz flagship tactile spring press:
+ * - Scales down to 0.965f on press, 1.0f on release (stiffness = 500f, dampingRatio = 0.75f).
+ * - Triggers subtle HapticFeedbackType.TextHandleMove instantly on pointer down.
+ * - Executes scale transformations purely via Modifier.graphicsLayer for 120 FPS performance.
  */
 fun Modifier.nothingBentoPress(
     enabled: Boolean = true,
-    pressedScale: Float = 0.97f,
-    flashColor: Color = Color(0xFFD71921),
-    enableFlash: Boolean = true,
+    pressedScale: Float = 0.965f,
+    stiffness: Float = 500f,
+    dampingRatio: Float = 0.75f,
     onLongClick: (() -> Unit)? = null,
     onClick: () -> Unit = {},
 ): Modifier = composed {
@@ -53,12 +52,12 @@ fun Modifier.nothingBentoPress(
     val haptic = LocalHapticFeedback.current
     var isPressed by remember { mutableStateOf(value = false) }
 
-    // Mechanical high-stiffness spring animation
+    // Unified 120Hz flagship tactile spring
     val scale by animateFloatAsState(
         targetValue = if (isPressed) pressedScale else 1.0f,
         animationSpec = spring(
-            dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessMedium,
+            dampingRatio = dampingRatio,
+            stiffness = stiffness,
         ),
         label = "nothingBentoPressScale",
     )
@@ -72,7 +71,7 @@ fun Modifier.nothingBentoPress(
             detectTapGestures(
                 onPress = {
                     isPressed = true
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                     try {
                         awaitRelease()
                     } finally {
@@ -87,17 +86,53 @@ fun Modifier.nothingBentoPress(
                 },
             )
         }
-        .drawWithContent {
-            drawContent()
-            if (isPressed && enableFlash) {
-                // Subtle accent red tint flash over card surface (#D71921)
-                drawRect(color = flashColor.copy(alpha = 0.12f))
-                // Inverted crisp border flash stroke
-                drawRect(
-                    color = flashColor.copy(alpha = 0.60f),
-                    style = Stroke(width = 1.5.dp.toPx()),
-                )
-            }
+}
+
+/**
+ * Universal tactile spring press modifier for pills, buttons, and icons.
+ * Scales down to 0.965f on press, 1.0f on release (stiffness = 500f, dampingRatio = 0.75f).
+ */
+fun Modifier.tactilePress(
+    enabled: Boolean = true,
+    pressedScale: Float = 0.965f,
+    stiffness: Float = 500f,
+    dampingRatio: Float = 0.75f,
+    onClick: () -> Unit = {},
+): Modifier = composed {
+    if (!enabled) return@composed this
+
+    val haptic = LocalHapticFeedback.current
+    var isPressed by remember { mutableStateOf(false) }
+
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) pressedScale else 1.0f,
+        animationSpec = spring(
+            dampingRatio = dampingRatio,
+            stiffness = stiffness,
+        ),
+        label = "tactilePressScale",
+    )
+
+    this
+        .graphicsLayer {
+            scaleX = scale
+            scaleY = scale
+        }
+        .pointerInput(Unit) {
+            detectTapGestures(
+                onPress = {
+                    isPressed = true
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    try {
+                        awaitRelease()
+                    } finally {
+                        isPressed = false
+                    }
+                },
+                onTap = {
+                    onClick()
+                },
+            )
         }
 }
 

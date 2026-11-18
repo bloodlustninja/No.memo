@@ -5,6 +5,8 @@ import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -30,6 +32,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.itemsIndexed
+import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
@@ -49,12 +52,17 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -76,6 +84,8 @@ import com.example.nomemo.R
 import com.example.nomemo.data.entity.Note
 import com.example.nomemo.data.entity.NoteType
 import com.example.nomemo.voice.VoiceToTextManager
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlin.math.absoluteValue
 
@@ -123,7 +133,21 @@ fun MainNotesScreen(
     var showKnowledgeGraph by remember { mutableStateOf(false) }
     var isBatchMode by remember { mutableStateOf(false) }
     val selectedNoteIds = remember { androidx.compose.runtime.mutableStateListOf<Long>() }
+    val dissolvingNoteIds = remember { mutableStateListOf<Long>() }
     var lockedNoteForAuth by remember { mutableStateOf<com.example.nomemo.data.entity.Note?>(null) }
+
+    // Real-time check for active Burn notes reaching expiration -> triggers 300ms AGSL dissolve
+    LaunchedEffect(notesList) {
+        val now = System.currentTimeMillis()
+        notesList.forEach { note ->
+            if (note.isBurn) {
+                val expireTime = note.burnExpiresAt ?: (note.timestamp + 24 * 3600 * 1000L)
+                if (now >= expireTime && !dissolvingNoteIds.contains(note.id)) {
+                    dissolvingNoteIds.add(note.id)
+                }
+            }
+        }
+    }
 
     DisposableEffect(Unit) {
         val detector = NothingShakeDetector(context) {
@@ -206,13 +230,13 @@ fun MainNotesScreen(
                     }
 
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        // Search Button
+                        // Search Button with tactile press
                         Box(
                             modifier = Modifier
                                 .size(38.dp)
                                 .clip(CircleShape)
                                 .background(if (isSearchActive) NothingThemeColors.accentCrimson.copy(alpha = 0.2f) else Color.Transparent)
-                                .clickable {
+                                .tactilePress {
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                     isSearchActive = !isSearchActive
                                     if (!isSearchActive) {
@@ -232,12 +256,12 @@ fun MainNotesScreen(
 
                         Spacer(modifier = Modifier.width(6.dp))
 
-                        // Focus Mode Button
+                        // Focus Mode Button with tactile press
                         Box(
                             modifier = Modifier
                                 .size(38.dp)
                                 .clip(CircleShape)
-                                .clickable {
+                                .tactilePress {
                                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                     com.example.nomemo.ui.anim.NothingAudioFeedback.playTactileClick()
                                     showFocusTimer = true
@@ -254,12 +278,12 @@ fun MainNotesScreen(
 
                         Spacer(modifier = Modifier.width(6.dp))
 
-                        // Vault / Archives Button
+                        // Vault / Archives Button with tactile press
                         Box(
                             modifier = Modifier
                                 .size(38.dp)
                                 .clip(CircleShape)
-                                .clickable {
+                                .tactilePress {
                                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                     com.example.nomemo.ui.anim.NothingAudioFeedback.playTactileClick()
                                     showArchiveVault = true
@@ -276,12 +300,12 @@ fun MainNotesScreen(
 
                         Spacer(modifier = Modifier.width(6.dp))
 
-                        // Bento Knowledge Graph Button
+                        // Bento Knowledge Graph Button with tactile press
                         Box(
                             modifier = Modifier
                                 .size(38.dp)
                                 .clip(CircleShape)
-                                .clickable {
+                                .tactilePress {
                                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                     com.example.nomemo.ui.anim.NothingAudioFeedback.playTactileClick()
                                     showKnowledgeGraph = true
@@ -298,12 +322,12 @@ fun MainNotesScreen(
 
                         Spacer(modifier = Modifier.width(6.dp))
 
-                        // Batch Select Mode Button
+                        // Batch Select Mode Button with tactile press
                         Box(
                             modifier = Modifier
                                 .size(38.dp)
                                 .clip(CircleShape)
-                                .clickable {
+                                .tactilePress {
                                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                     com.example.nomemo.ui.anim.NothingAudioFeedback.playTactileClick()
                                     isBatchMode = !isBatchMode
@@ -321,12 +345,12 @@ fun MainNotesScreen(
 
                         Spacer(modifier = Modifier.width(6.dp))
 
-                        // Settings Button
+                        // Settings Button with tactile press
                         Box(
                             modifier = Modifier
                                 .size(38.dp)
                                 .clip(CircleShape)
-                                .clickable {
+                                .tactilePress {
                                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                     onSettingsClick()
                                 },
@@ -402,13 +426,13 @@ fun MainNotesScreen(
                             .padding(horizontal = 16.dp, vertical = 4.dp),
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
-                        // "All Tags" pill
+                        // "All Tags" pill with tactile press
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(12.dp))
                                 .background(if (activeTag == null) NothingThemeColors.accentCrimson else NothingThemeColors.tabTrackBackground)
                                 .border(1.dp, NothingThemeColors.tabTrackBorder, RoundedCornerShape(12.dp))
-                                .clickable {
+                                .tactilePress {
                                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                     onTagSelect(null)
                                 }
@@ -430,7 +454,7 @@ fun MainNotesScreen(
                                     .clip(RoundedCornerShape(12.dp))
                                     .background(if (isSelected) NothingThemeColors.accentCrimson else NothingThemeColors.tabTrackBackground)
                                     .border(1.dp, NothingThemeColors.tabTrackBorder, RoundedCornerShape(12.dp))
-                                    .clickable {
+                                    .tactilePress {
                                         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                         onTagSelect(if (isSelected) null else tag)
                                     }
@@ -465,6 +489,37 @@ fun MainNotesScreen(
                             3 -> notesList.filter { it.type == NoteType.MEDIA }
                             4 -> notesList.filter { it.type == NoteType.AUDIO || !it.audioUri.isNullOrBlank() }
                             else -> notesList
+                        }
+                    }
+
+                    val gridState = rememberLazyStaggeredGridState()
+                    var lastIndex by remember { mutableIntStateOf(0) }
+                    var lastOffset by remember { mutableIntStateOf(0) }
+                    var targetTilt by remember { mutableFloatStateOf(0f) }
+
+                    // Tie LazyVerticalStaggeredGrid scroll velocity to subtle graphicsLayer tilt/parallax on cards
+                    // Clamped to ±1.2f degrees, smoothly returning to 0f on scroll settle using spring(0.84f, 460f)
+                    val animatedTilt by animateFloatAsState(
+                        targetValue = if (gridState.isScrollInProgress) targetTilt else 0f,
+                        animationSpec = spring(
+                            dampingRatio = 0.84f,
+                            stiffness = 460f,
+                        ),
+                        label = "scrollInertiaTilt",
+                    )
+
+                    LaunchedEffect(gridState) {
+                        snapshotFlow {
+                            Pair(gridState.firstVisibleItemIndex, gridState.firstVisibleItemScrollOffset)
+                        }.collectLatest { (index, offset) ->
+                            val delta = ((index - lastIndex) * 200 + (offset - lastOffset)).toFloat()
+                            if (delta.absoluteValue > 1f) {
+                                targetTilt = (delta * 0.04f).coerceIn(-1.2f, 1.2f)
+                            }
+                            lastIndex = index
+                            lastOffset = offset
+                            delay(60L)
+                            targetTilt = 0f
                         }
                     }
 
@@ -508,6 +563,7 @@ fun MainNotesScreen(
                             }
                         } else {
                             LazyVerticalStaggeredGrid(
+                                state = gridState,
                                 columns = StaggeredGridCells.Fixed(2),
                                 contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 96.dp),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -515,12 +571,26 @@ fun MainNotesScreen(
                                 modifier = Modifier.fillMaxSize(),
                             ) {
                                 itemsIndexed(filteredNotes, key = { _, note -> note.id }) { index, note ->
+                                    val isDissolving = dissolvingNoteIds.contains(note.id)
                                     NothingThrowCard(
                                         onDismiss = {
                                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                             onNoteDelete(note)
                                         },
-                                        modifier = Modifier.nothingBentoEntrance(index = index),
+                                        modifier = Modifier
+                                            .animateItem()
+                                            .nothingAgslDissolve(
+                                                isDissolving = isDissolving,
+                                                onDissolveComplete = {
+                                                    dissolvingNoteIds.remove(note.id)
+                                                    onNoteDelete(note)
+                                                },
+                                            )
+                                            .nothingBentoEntrance(index = index)
+                                            .graphicsLayer {
+                                                rotationZ = animatedTilt
+                                                translationY = animatedTilt * 1.5f
+                                            },
                                     ) {
                                         BentoCardComposable(
                                             note = note,
@@ -623,7 +693,7 @@ fun MainNotesScreen(
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.clickable(enabled = selectedNotes.isNotEmpty()) {
+                            modifier = Modifier.tactilePress(enabled = selectedNotes.isNotEmpty()) {
                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                 com.example.nomemo.ui.anim.NothingAudioFeedback.playTactileClick()
                                 val anyUnpinned = selectedNotes.any { !it.isPinned }
@@ -650,7 +720,7 @@ fun MainNotesScreen(
 
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.clickable(enabled = selectedNotes.isNotEmpty()) {
+                            modifier = Modifier.tactilePress(enabled = selectedNotes.isNotEmpty()) {
                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                 com.example.nomemo.ui.anim.NothingAudioFeedback.playLockToggle(true)
                                 val anyUnlocked = selectedNotes.any { !it.isLocked }
@@ -677,7 +747,7 @@ fun MainNotesScreen(
 
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.clickable(enabled = selectedNotes.isNotEmpty()) {
+                            modifier = Modifier.tactilePress(enabled = selectedNotes.isNotEmpty()) {
                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                 com.example.nomemo.ui.anim.NothingAudioFeedback.playTactileClick()
                                 onBulkArchive?.invoke(selectedNotes)
@@ -703,10 +773,14 @@ fun MainNotesScreen(
 
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.clickable(enabled = selectedNotes.isNotEmpty()) {
+                            modifier = Modifier.tactilePress(enabled = selectedNotes.isNotEmpty()) {
                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                 com.example.nomemo.ui.anim.NothingAudioFeedback.playTactileClick()
-                                onBulkDelete?.invoke(selectedNotes)
+                                selectedNotes.forEach { note ->
+                                    if (!dissolvingNoteIds.contains(note.id)) {
+                                        dissolvingNoteIds.add(note.id)
+                                    }
+                                }
                                 isBatchMode = false
                                 selectedNoteIds.clear()
                             },
@@ -832,7 +906,7 @@ fun FloatingCapsuleDockView(
         Box(
             modifier = Modifier
                 .weight(1f)
-                .clickable { onTextClick() },
+                .tactilePress { onTextClick() },
             contentAlignment = Alignment.Center,
         ) {
             Icon(
@@ -845,7 +919,7 @@ fun FloatingCapsuleDockView(
         Box(
             modifier = Modifier
                 .weight(1f)
-                .clickable { onChecklistClick() },
+                .tactilePress { onChecklistClick() },
             contentAlignment = Alignment.Center,
         ) {
             Icon(
@@ -858,7 +932,7 @@ fun FloatingCapsuleDockView(
         Box(
             modifier = Modifier
                 .weight(1f)
-                .clickable { onImageClick() },
+                .tactilePress { onImageClick() },
             contentAlignment = Alignment.Center,
         ) {
             Icon(
@@ -871,7 +945,7 @@ fun FloatingCapsuleDockView(
         Box(
             modifier = Modifier
                 .weight(1f)
-                .clickable { onVoiceClick() },
+                .tactilePress { onVoiceClick() },
             contentAlignment = Alignment.Center,
         ) {
             Icon(

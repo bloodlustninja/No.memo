@@ -3,17 +3,21 @@ package com.example.nomemo.ui.compose
 import android.net.Uri
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Alarm
 import androidx.compose.material.icons.outlined.Check
-import androidx.compose.material.icons.outlined.LocalFireDepartment
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.LockOpen
 import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.graphicsLayer
 import com.example.nomemo.data.model.ChecklistItem
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -130,11 +134,22 @@ fun BentoCardComposable(
                     )
 
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        // Burn Countdown Badge (e.g., "23H")
+                        // Burn Countdown Badge (e.g., "23H") with pulsing red dot indicator
                         if (note.isBurn) {
                             val remainingMs = (note.burnExpiresAt ?: (note.timestamp + 24 * 3600 * 1000L)) - System.currentTimeMillis()
                             val hours = maxOf(0L, remainingMs / (1000 * 3600))
                             val countdownText = if (hours > 0) "${hours}H" else "${maxOf(1L, remainingMs / (1000 * 60))}M"
+
+                            val burnTransition = rememberInfiniteTransition(label = "burnDotPulse")
+                            val burnDotAlpha by burnTransition.animateFloat(
+                                initialValue = 0.4f,
+                                targetValue = 1.0f,
+                                animationSpec = infiniteRepeatable(
+                                    animation = tween(durationMillis = 1800, easing = FastOutSlowInEasing),
+                                    repeatMode = RepeatMode.Reverse,
+                                ),
+                                label = "burnDotAlpha",
+                            )
 
                             Row(
                                 modifier = Modifier
@@ -144,13 +159,14 @@ fun BentoCardComposable(
                                     .padding(horizontal = 6.dp, vertical = 2.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Icon(
-                                    imageVector = Icons.Outlined.LocalFireDepartment,
-                                    contentDescription = "Burn Note",
-                                    tint = NothingThemeColors.accentCrimson,
-                                    modifier = Modifier.size(12.dp),
+                                Box(
+                                    modifier = Modifier
+                                        .size(5.dp)
+                                        .graphicsLayer { alpha = burnDotAlpha }
+                                        .clip(CircleShape)
+                                        .background(NothingThemeColors.accentCrimson),
                                 )
-                                Spacer(modifier = Modifier.width(3.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
                                 Text(
                                     text = countdownText,
                                     fontFamily = FontFamily.Monospace,
@@ -297,7 +313,7 @@ fun BentoCardComposable(
                                         .clip(RoundedCornerShape(10.dp))
                                         .background(NothingThemeColors.tabTrackBackground)
                                         .border(1.dp, NothingThemeColors.tabTrackBorder, RoundedCornerShape(10.dp))
-                                        .clickable { onTagClick?.invoke(tag) }
+                                        .tactilePress { onTagClick?.invoke(tag) }
                                         .padding(horizontal = 6.dp, vertical = 2.dp),
                                 ) {
                                     Text(
@@ -360,20 +376,20 @@ private fun BentoChecklistItemRow(
     val haptic = LocalHapticFeedback.current
     val progress by animateFloatAsState(
         targetValue = if (item.isChecked) 1f else 0f,
-        animationSpec = tween(durationMillis = 260, easing = FastOutSlowInEasing),
+        animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
         label = "strikethroughProgress",
     )
-    val textColor by animateColorAsState(
-        targetValue = if (item.isChecked) NothingThemeColors.textMuted else NothingThemeColors.textSecondary,
-        animationSpec = tween(durationMillis = 260),
-        label = "textColor",
+    val textAlpha by animateFloatAsState(
+        targetValue = if (item.isChecked) 0.45f else 1.0f,
+        animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
+        label = "textAlpha",
     )
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(6.dp))
-            .clickable {
+            .tactilePress {
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 com.example.nomemo.ui.anim.NothingAudioFeedback.playCheckChime()
                 onToggle()
@@ -409,18 +425,19 @@ private fun BentoChecklistItemRow(
 
         Spacer(modifier = Modifier.width(6.dp))
 
+        val resolvedColor = NothingThemeColors.textSecondary.copy(alpha = textAlpha)
         Text(
             text = item.text,
             fontSize = 12.sp,
-            color = textColor,
+            color = resolvedColor,
             maxLines = 1,
             modifier = Modifier.drawWithContent {
                 drawContent()
-                if (progress > 0.01f) {
+                if (progress > 0.001f) {
                     val strokeW = 1.2.dp.toPx()
                     val y = size.height / 2f
                     drawLine(
-                        color = textColor,
+                        color = resolvedColor,
                         start = Offset(0f, y),
                         end = Offset(size.width * progress, y),
                         strokeWidth = strokeW,

@@ -208,13 +208,16 @@ fun NothingNoteEditorScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    // Back button (left)
-                    IconButton(
-                        onClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            onBackClick()
-                        },
-                        modifier = Modifier.size(36.dp),
+                    // Back button (left) with 120Hz tactile press
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .tactilePress {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                onBackClick()
+                            },
+                        contentAlignment = Alignment.Center,
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
@@ -224,19 +227,22 @@ fun NothingNoteEditorScreen(
                         )
                     }
 
-                    // Right action cluster: Burn 24h, Pin, More (⋮)
+                    // Right action cluster: Burn 24h, Pin, More (⋮) with tactile press
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
                         // Burn 24h Toggle
-                        IconButton(
-                            onClick = {
-                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                isBurn = !isBurn
-                                burnExpiresAt = if (isBurn) System.currentTimeMillis() + 24 * 3600 * 1000L else null
-                            },
-                            modifier = Modifier.size(36.dp),
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .tactilePress {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    isBurn = !isBurn
+                                    burnExpiresAt = if (isBurn) System.currentTimeMillis() + 24 * 3600 * 1000L else null
+                                },
+                            contentAlignment = Alignment.Center,
                         ) {
                             Icon(
                                 imageVector = Icons.Outlined.LocalFireDepartment,
@@ -247,12 +253,15 @@ fun NothingNoteEditorScreen(
                         }
 
                         // Pin Toggle
-                        IconButton(
-                            onClick = {
-                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                isPinned = !isPinned
-                            },
-                            modifier = Modifier.size(36.dp),
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .tactilePress {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    isPinned = !isPinned
+                                },
+                            contentAlignment = Alignment.Center,
                         ) {
                             Icon(
                                 imageVector = Icons.Outlined.PushPin,
@@ -264,12 +273,15 @@ fun NothingNoteEditorScreen(
 
                         // More (⋮) Overflow Menu
                         Box {
-                            IconButton(
-                                onClick = {
-                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                    showMoreMenu = true
-                                },
-                                modifier = Modifier.size(36.dp),
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(CircleShape)
+                                    .tactilePress {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        showMoreMenu = true
+                                    },
+                                contentAlignment = Alignment.Center,
                             ) {
                                 Icon(
                                     imageVector = Icons.Outlined.MoreVert,
@@ -603,13 +615,16 @@ fun NothingNoteEditorScreen(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     // 1. Checklist Toggle
-                    IconButton(
-                        onClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            checklistItems.add(ChecklistItem(text = ""))
-                            noteType = NoteType.CHECKLIST
-                        },
-                        modifier = Modifier.size(36.dp),
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .tactilePress {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                checklistItems.add(ChecklistItem(text = ""))
+                                noteType = NoteType.CHECKLIST
+                            },
+                        contentAlignment = Alignment.Center,
                     ) {
                         Icon(
                             imageVector = Icons.Outlined.CheckBox,
@@ -620,24 +635,27 @@ fun NothingNoteEditorScreen(
                     }
 
                     // 2. Voice Dictation (SpeechRecognizer)
-                    IconButton(
-                        onClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            if (isListening) {
-                                voiceManager.stopListening()
-                            } else {
-                                val hasPerm = ContextCompat.checkSelfPermission(
-                                    context,
-                                    Manifest.permission.RECORD_AUDIO,
-                                ) == PackageManager.PERMISSION_GRANTED
-                                if (hasPerm) {
-                                    voiceManager.startListening()
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .tactilePress {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                if (isListening) {
+                                    voiceManager.stopListening()
                                 } else {
-                                    micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                                    val hasPerm = ContextCompat.checkSelfPermission(
+                                        context,
+                                        Manifest.permission.RECORD_AUDIO,
+                                    ) == PackageManager.PERMISSION_GRANTED
+                                    if (hasPerm) {
+                                        voiceManager.startListening()
+                                    } else {
+                                        micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                                    }
                                 }
-                            }
-                        },
-                        modifier = Modifier.size(36.dp),
+                            },
+                        contentAlignment = Alignment.Center,
                     ) {
                         Icon(
                             imageVector = Icons.Outlined.Mic,
@@ -648,21 +666,23 @@ fun NothingNoteEditorScreen(
                     }
 
                     // 3. Undo
-                    IconButton(
-                        onClick = {
-                            if (undoStack.size > 1) {
-                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                val cur = undoStack.removeLast()
-                                redoStack.addLast(cur)
-                                val prev = undoStack.last()
-                                isUndoRedoAction = true
-                                title = prev.first
-                                body = prev.second
-                                isUndoRedoAction = false
-                            }
-                        },
-                        enabled = undoStack.size > 1,
-                        modifier = Modifier.size(36.dp),
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .tactilePress(enabled = undoStack.size > 1) {
+                                if (undoStack.size > 1) {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    val cur = undoStack.removeLast()
+                                    redoStack.addLast(cur)
+                                    val prev = undoStack.last()
+                                    isUndoRedoAction = true
+                                    title = prev.first
+                                    body = prev.second
+                                    isUndoRedoAction = false
+                                }
+                            },
+                        contentAlignment = Alignment.Center,
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Outlined.Undo,
@@ -673,20 +693,22 @@ fun NothingNoteEditorScreen(
                     }
 
                     // 4. Redo
-                    IconButton(
-                        onClick = {
-                            if (redoStack.isNotEmpty()) {
-                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                val nxt = redoStack.removeLast()
-                                undoStack.addLast(nxt)
-                                isUndoRedoAction = true
-                                title = nxt.first
-                                body = nxt.second
-                                isUndoRedoAction = false
-                            }
-                        },
-                        enabled = redoStack.isNotEmpty(),
-                        modifier = Modifier.size(36.dp),
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .tactilePress(enabled = redoStack.isNotEmpty()) {
+                                if (redoStack.isNotEmpty()) {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    val nxt = redoStack.removeLast()
+                                    undoStack.addLast(nxt)
+                                    isUndoRedoAction = true
+                                    title = nxt.first
+                                    body = nxt.second
+                                    isUndoRedoAction = false
+                                }
+                            },
+                        contentAlignment = Alignment.Center,
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Outlined.Redo,
@@ -781,13 +803,13 @@ private fun EditorChecklistItemRow(
 ) {
     val progress by animateFloatAsState(
         targetValue = if (item.isChecked) 1f else 0f,
-        animationSpec = tween(durationMillis = 260, easing = FastOutSlowInEasing),
+        animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
         label = "strikethroughProgress",
     )
-    val textColor by animateColorAsState(
-        targetValue = if (item.isChecked) NothingThemeColors.textMuted else NothingThemeColors.textPrimary,
-        animationSpec = tween(durationMillis = 260),
-        label = "textColor",
+    val textAlpha by animateFloatAsState(
+        targetValue = if (item.isChecked) 0.45f else 1.0f,
+        animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
+        label = "textAlpha",
     )
 
     Row(
@@ -799,7 +821,7 @@ private fun EditorChecklistItemRow(
             .padding(horizontal = 10.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // Monochrome Checkbox
+        // Monochrome Checkbox with 120Hz tactile press
         Box(
             modifier = Modifier
                 .size(18.dp)
@@ -810,7 +832,7 @@ private fun EditorChecklistItemRow(
                     color = if (item.isChecked) NothingThemeColors.iconActive else NothingThemeColors.surfaceBorder,
                     shape = RoundedCornerShape(4.dp),
                 )
-                .clickable { onCheckedChange(!item.isChecked) },
+                .tactilePress { onCheckedChange(!item.isChecked) },
             contentAlignment = Alignment.Center,
         ) {
             if (item.isChecked) {
@@ -825,13 +847,14 @@ private fun EditorChecklistItemRow(
 
         Spacer(modifier = Modifier.width(10.dp))
 
-        // Checklist text input
+        // Checklist text input with dynamic alpha dimming
+        val resolvedTextColor = NothingThemeColors.textPrimary.copy(alpha = textAlpha)
         BasicTextField(
             value = item.text,
             onValueChange = onTextChange,
             textStyle = TextStyle(
                 fontSize = 14.sp,
-                color = textColor,
+                color = resolvedTextColor,
             ),
             cursorBrush = SolidColor(NothingThemeColors.iconActive),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
@@ -840,11 +863,11 @@ private fun EditorChecklistItemRow(
                 .weight(1f)
                 .drawWithContent {
                     drawContent()
-                    if (progress > 0.01f) {
+                    if (progress > 0.001f) {
                         val strokeW = 1.2.dp.toPx()
                         val y = size.height / 2f
                         drawLine(
-                            color = textColor,
+                            color = resolvedTextColor,
                             start = Offset(0f, y),
                             end = Offset(size.width * progress, y),
                             strokeWidth = strokeW,
@@ -853,10 +876,13 @@ private fun EditorChecklistItemRow(
                 },
         )
 
-        // Delete Row Button
-        IconButton(
-            onClick = onDelete,
-            modifier = Modifier.size(24.dp),
+        // Delete Row Button with tactile press
+        Box(
+            modifier = Modifier
+                .size(24.dp)
+                .clip(CircleShape)
+                .tactilePress { onDelete() },
+            contentAlignment = Alignment.Center,
         ) {
             Icon(
                 imageVector = Icons.Outlined.Close,

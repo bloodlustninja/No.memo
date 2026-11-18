@@ -52,47 +52,44 @@ enum class BentoCardSize(val spanX: Int, val spanY: Int) {
 }
 
 /**
- * Modifier for Nothing OS 5.0 Asymmetric Bento Grid Staggered Entrance.
+ * Modifier for Nothing OS 5.0 Bento Grid Staggered Cascade Entrance.
  *
  * Entrance Motion:
- * - Slides up 20dp -> 0dp.
- * - Snaps into place with high stiffness (StiffnessMediumHigh / 5750f, Spring.DampingRatioNoBouncy).
- * - Fades in alpha 0f -> 1f.
- * - Staggered by 30ms per item coordinate (e.g., (row + col) * 30ms or index * 30ms).
+ * - 35ms delay per index.
+ * - Fades in (alpha: 0f -> 1f).
+ * - Slides up 20.dp -> 0.dp.
+ * - Uses spring(dampingRatio = 0.84f, stiffness = 460f) for 120Hz flagship tactile feel.
  */
 fun Modifier.nothingBentoEntrance(
     index: Int,
     row: Int = 0,
     col: Int = 0,
-    staggerDelayMs: Long = 30L,
+    staggerDelayMs: Long = 35L,
     initialOffsetY: Dp = 20.dp,
 ): Modifier = composed {
     val alphaAnim = remember { Animatable(0f) }
     val offsetYAnim = remember(initialOffsetY) { Animatable(initialOffsetY, Dp.VectorConverter) }
 
-    LaunchedEffect(index, row, col) {
-        // Calculate coordinate-based rhythmic delay (30ms per step)
-        val coordinateIndex = row + col
-        val delayMs = if (coordinateIndex > 0) coordinateIndex * staggerDelayMs else index * staggerDelayMs
-        delay(delayMs.milliseconds)
+    LaunchedEffect(index) {
+        val delayMs = index * staggerDelayMs
+        delay(delayMs)
 
-        // Rapid, crisp high-stiffness spring animation
-        val springSpec = spring<Float>(
-            stiffness = StiffnessMediumHigh,
-            dampingRatio = Spring.DampingRatioNoBouncy,
+        val springSpecFloat = spring<Float>(
+            dampingRatio = 0.84f,
+            stiffness = 460f,
         )
-        val dpSpringSpec = spring<Dp>(
-            stiffness = StiffnessMediumHigh,
-            dampingRatio = Spring.DampingRatioNoBouncy,
+        val springSpecDp = spring<Dp>(
+            dampingRatio = 0.84f,
+            stiffness = 460f,
         )
 
-        // Launch staggered entrance animations concurrently
+        // Launch staggered cascade entrance concurrently
         coroutineScope {
             launch {
-                alphaAnim.animateTo(1f, animationSpec = springSpec)
+                alphaAnim.animateTo(1f, animationSpec = springSpecFloat)
             }
             launch {
-                offsetYAnim.animateTo(0.dp, animationSpec = dpSpringSpec)
+                offsetYAnim.animateTo(0.dp, animationSpec = springSpecDp)
             }
         }
     }
