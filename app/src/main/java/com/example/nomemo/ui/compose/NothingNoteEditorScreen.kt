@@ -602,120 +602,128 @@ fun NothingNoteEditorScreen(
                     }
                 }
 
-                // BOTTOM KEYBOARD BAR: Clean imePadding() bar with 4 monochrome icon buttons
-                Row(
+                // FLOATING KEYBOARD CAPSULE PILL: Generous floating pill with 4 monochrome icon buttons with 120Hz tactile press
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(NothingThemeColors.surface)
-                        .border(width = 1.dp, color = NothingThemeColors.surfaceBorder)
                         .imePadding()
                         .navigationBarsPadding()
-                        .padding(vertical = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically,
+                        .padding(bottom = 14.dp),
+                    contentAlignment = Alignment.Center,
                 ) {
-                    // 1. Checklist Toggle
-                    Box(
+                    Row(
                         modifier = Modifier
-                            .size(36.dp)
-                            .clip(CircleShape)
-                            .tactilePress {
-                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                checklistItems.add(ChecklistItem(text = ""))
-                                noteType = NoteType.CHECKLIST
-                            },
-                        contentAlignment = Alignment.Center,
+                            .height(58.dp)
+                            .clip(RoundedCornerShape(29.dp))
+                            .background(NothingThemeColors.surface)
+                            .border(1.dp, NothingThemeColors.surfaceBorder, RoundedCornerShape(29.dp))
+                            .padding(horizontal = 18.dp),
+                        horizontalArrangement = Arrangement.spacedBy(18.dp),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Icon(
-                            imageVector = Icons.Outlined.CheckBox,
-                            contentDescription = "Checklist Toggle",
-                            modifier = Modifier.size(20.dp),
-                            tint = if (checklistItems.isNotEmpty()) NothingThemeColors.iconActive else NothingThemeColors.iconInactive,
-                        )
-                    }
+                        // 1. Checklist Toggle
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(CircleShape)
+                                .tactilePress {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    checklistItems.add(ChecklistItem(text = ""))
+                                    noteType = NoteType.CHECKLIST
+                                },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.CheckBox,
+                                contentDescription = "Checklist Toggle",
+                                modifier = Modifier.size(22.dp),
+                                tint = if (checklistItems.isNotEmpty()) NothingThemeColors.iconActive else NothingThemeColors.iconInactive,
+                            )
+                        }
 
-                    // 2. Voice Dictation (SpeechRecognizer)
-                    Box(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(CircleShape)
-                            .tactilePress {
-                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                if (isListening) {
-                                    voiceManager.stopListening()
-                                } else {
-                                    val hasPerm = ContextCompat.checkSelfPermission(
-                                        context,
-                                        Manifest.permission.RECORD_AUDIO,
-                                    ) == PackageManager.PERMISSION_GRANTED
-                                    if (hasPerm) {
-                                        voiceManager.startListening()
+                        // 2. Voice Dictation (SpeechRecognizer)
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(CircleShape)
+                                .tactilePress {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    if (isListening) {
+                                        voiceManager.stopListening()
                                     } else {
-                                        micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                                        val hasPerm = ContextCompat.checkSelfPermission(
+                                            context,
+                                            Manifest.permission.RECORD_AUDIO,
+                                        ) == PackageManager.PERMISSION_GRANTED
+                                        if (hasPerm) {
+                                            voiceManager.startListening()
+                                        } else {
+                                            micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                                        }
                                     }
-                                }
-                            },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Mic,
-                            contentDescription = "Voice Dictation",
-                            modifier = Modifier.size(20.dp),
-                            tint = if (isListening) NothingThemeColors.iconActive else NothingThemeColors.iconInactive,
-                        )
-                    }
+                                },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Mic,
+                                contentDescription = "Voice Dictation",
+                                modifier = Modifier.size(22.dp),
+                                tint = if (isListening) NothingThemeColors.iconActive else NothingThemeColors.iconInactive,
+                            )
+                        }
 
-                    // 3. Undo
-                    Box(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(CircleShape)
-                            .tactilePress(enabled = undoStack.size > 1) {
-                                if (undoStack.size > 1) {
-                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                    val cur = undoStack.removeLast()
-                                    redoStack.addLast(cur)
-                                    val prev = undoStack.last()
-                                    isUndoRedoAction = true
-                                    title = prev.first
-                                    body = prev.second
-                                    isUndoRedoAction = false
-                                }
-                            },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Outlined.Undo,
-                            contentDescription = "Undo",
-                            modifier = Modifier.size(20.dp),
-                            tint = if (undoStack.size > 1) NothingThemeColors.iconActive else NothingThemeColors.iconInactive,
-                        )
-                    }
+                        // 3. Undo
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(CircleShape)
+                                .tactilePress(enabled = undoStack.size > 1) {
+                                    if (undoStack.size > 1) {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        val cur = undoStack.removeLast()
+                                        redoStack.addLast(cur)
+                                        val prev = undoStack.last()
+                                        isUndoRedoAction = true
+                                        title = prev.first
+                                        body = prev.second
+                                        isUndoRedoAction = false
+                                    }
+                                },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Outlined.Undo,
+                                contentDescription = "Undo",
+                                modifier = Modifier.size(22.dp),
+                                tint = if (undoStack.size > 1) NothingThemeColors.iconActive else NothingThemeColors.iconInactive,
+                            )
+                        }
 
-                    // 4. Redo
-                    Box(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(CircleShape)
-                            .tactilePress(enabled = redoStack.isNotEmpty()) {
-                                if (redoStack.isNotEmpty()) {
-                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                    val nxt = redoStack.removeLast()
-                                    undoStack.addLast(nxt)
-                                    isUndoRedoAction = true
-                                    title = nxt.first
-                                    body = nxt.second
-                                    isUndoRedoAction = false
-                                }
-                            },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Outlined.Redo,
-                            contentDescription = "Redo",
-                            modifier = Modifier.size(20.dp),
-                            tint = if (redoStack.isNotEmpty()) NothingThemeColors.iconActive else NothingThemeColors.iconInactive,
-                        )
+                        // 4. Redo
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(CircleShape)
+                                .tactilePress(enabled = redoStack.isNotEmpty()) {
+                                    if (redoStack.isNotEmpty()) {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        val nxt = redoStack.removeLast()
+                                        undoStack.addLast(nxt)
+                                        isUndoRedoAction = true
+                                        title = nxt.first
+                                        body = nxt.second
+                                        isUndoRedoAction = false
+                                    }
+                                },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Outlined.Redo,
+                                contentDescription = "Redo",
+                                modifier = Modifier.size(22.dp),
+                                tint = if (redoStack.isNotEmpty()) NothingThemeColors.iconActive else NothingThemeColors.iconInactive,
+                            )
+                        }
                     }
                 }
             }
