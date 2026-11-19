@@ -5,8 +5,11 @@ import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -140,6 +143,32 @@ fun MainNotesScreen(
     val dissolvingNoteIds = remember { mutableStateListOf<Long>() }
     var lockedNoteForAuth by remember { mutableStateOf<com.example.nomemo.data.entity.Note?>(null) }
 
+    // "NO MEMO" Header Entrance Animation: 0f -> 1f alpha, 5.sp -> 1.5.sp letter-spacing over 280ms, gentle dot pulse
+    val headerTitleAlpha = remember { Animatable(0f) }
+    val headerLetterSpacing = remember { Animatable(5f) }
+    val headerDotAlpha = remember { Animatable(0f) }
+    val headerDotScale = remember { Animatable(0.4f) }
+
+    LaunchedEffect(Unit) {
+        launch {
+            headerTitleAlpha.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(durationMillis = 280, easing = FastOutSlowInEasing),
+            )
+        }
+        launch {
+            headerLetterSpacing.animateTo(
+                targetValue = 1.5f,
+                animationSpec = tween(durationMillis = 280, easing = FastOutSlowInEasing),
+            )
+        }
+        launch {
+            headerDotAlpha.animateTo(1f, tween(150, easing = FastOutSlowInEasing))
+            headerDotScale.animateTo(1.35f, tween(180, easing = FastOutSlowInEasing))
+            headerDotScale.animateTo(1.0f, tween(200, easing = FastOutSlowInEasing))
+        }
+    }
+
     // Real-time check for active Burn notes reaching expiration -> triggers 300ms AGSL dissolve
     LaunchedEffect(notesList) {
         val now = System.currentTimeMillis()
@@ -190,20 +219,37 @@ fun MainNotesScreen(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        KineticDotMatrixText(
-                            text = if (isBatchMode) "${selectedNoteIds.size} SELECTED" else "NO.MEMO",
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = if (isBatchMode) 17.sp else 22.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (isBatchMode) NothingThemeColors.accentCrimson else NothingThemeColors.textPrimary,
-                            letterSpacing = if (isBatchMode) 1.sp else 2.sp,
-                        )
+                        if (isBatchMode) {
+                            Text(
+                                text = "${selectedNoteIds.size} SELECTED",
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 17.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = NothingThemeColors.accentCrimson,
+                                letterSpacing = 1.sp,
+                            )
+                        } else {
+                            Text(
+                                text = "NO MEMO",
+                                modifier = Modifier.graphicsLayer { alpha = headerTitleAlpha.value },
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 22.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = NothingThemeColors.textPrimary,
+                                letterSpacing = headerLetterSpacing.value.sp,
+                            )
+                        }
                         Spacer(modifier = Modifier.width(8.dp))
                         Box(
                             modifier = Modifier
                                 .size(6.dp)
+                                .graphicsLayer {
+                                    scaleX = headerDotScale.value
+                                    scaleY = headerDotScale.value
+                                    alpha = headerDotAlpha.value
+                                }
                                 .clip(CircleShape)
-                                .background(NothingThemeColors.accentCrimson),
+                                .background(Color(0xFFD71921)),
                         )
                         if (isBatchMode) {
                             Spacer(modifier = Modifier.width(10.dp))
