@@ -34,4 +34,7 @@ data class Note(
     val reminderTimestamp: Long? = null,
     val isBurn: Boolean = false,
     val burnExpiresAt: Long? = null,
+    val boardX: Float? = null,
+    val boardY: Float? = null,
+    val linkedNoteIds: List<Long> = emptyList(),
 )

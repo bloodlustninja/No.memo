@@ -11,7 +11,7 @@
 
 ---
 
-> **NO.MEMO** is an unforgettable, zero-friction Android notes and ideation studio built in 100% pure Jetpack Compose. It faithfully embodies the iconic industrial, monochrome, and dot-matrix bento design language of **Nothing OS 5.0**—powered by 120 FPS hardware-accelerated Skia GPU canvases, procedural mechanical PCM audio synthesis, an interactive Nothing Phone Glyph LED simulator, live Markdown WYSIWYG rendering, an infinite 2D Bento Knowledge Graph, and a physical homescreen bento widget.
+> **NO.MEMO** is an unforgettable, zero-friction Android notes and ideation studio built in 100% pure Jetpack Compose. It faithfully embodies the iconic industrial, monochrome, and dot-matrix bento design language of **Nothing OS 5.0**—powered by 120 FPS hardware-accelerated Skia GPU canvases, procedural mechanical PCM audio synthesis, an interactive Nothing Phone Glyph LED simulator, live Markdown WYSIWYG rendering, a tactile Nothing Red String Board detective canvas, and a physical homescreen bento widget.
 
 ---
 
@@ -36,8 +36,8 @@
 * **Optical Fingerprint Scanner (`NothingBiometricLockOverlay.kt`)**: Dot-Matrix concentric optical fingerprint sensor with dynamic touch-and-hold radial fill, mechanical tumbler release sounds, and 4-digit PIN fallback.
 * **Privacy Shutter (`BentoCardComposable.kt`)**: Locked cards conceal contents behind an animated matrix privacy shield until authenticated.
 
-### 6. 🕸️ 2D Bento Knowledge Graph Constellation
-* **Infinite Pan & Zoom Canvas (`BentoKnowledgeGraphScreen.kt`)**: Visualizes all notes as interactive celestial nodes connected by laser vectors based on shared `#hashtags`. Tap any star node to instantly open the corresponding note.
+### 6. 📌 Tactile String Board (Detective Pinboard) Canvas
+* **Spatial Dot-Matrix Pinboard (`StringBoardScreen.kt`)**: Spatial 2D canvas with #1E1E1E dot-matrix grid and two-finger pinch-to-zoom (0.5x to 1.6x). Notes automatically connect via Nothing Red (`#D71921`) cubic Bezier strings anchored to 6.dp red pin-dots. Supports live elastic thread drag-to-connect, double-tap to unlink, dynamic spring tension physics, and faint 1.dp #262626 alignment guides.
 
 ### 7. 📝 Live Markdown WYSIWYG Renderer
 * **WYSIWYG Markdown Engine (`NothingMarkdownRenderer.kt`)**: Renders `# Headers` in NDot uppercase typography, `> Blockquotes` with crimson accent bars, interactive `- [ ] Checkboxes`, and `` `code blocks` `` with 1-tap clipboard copying.
@@ -135,7 +135,7 @@ graph TD
     F --> G[FrostedBentoCard & BentoCardComposable]
     B --> H[NothingBiometricLockOverlay]
     B --> I[NothingReminderDialog]
-    B --> J[BentoKnowledgeGraphScreen]
+    B --> J[StringBoardScreen]
     B --> K[FlashNoteOverlay]
     B --> L[NothingFocusTimerScreen]
     B --> M[NothingArchiveVaultScreen]
@@ -164,7 +164,7 @@ com.example.nomemo
 ├── ui
 │   ├── anim         # NothingAudioFeedback (Procedural PCM Audio Synthesizer)
 │   ├── compose      # MainNotesScreen, FrostedBentoCard, NothingNoteEditorScreen,
-│   │                # BentoKnowledgeGraphScreen, NothingMarkdownRenderer,
+│   │                # StringBoardScreen, NothingMarkdownRenderer,
 │   │                # NothingBiometricLockOverlay, NothingReminderDialog,
 │   │                # NothingVersionHistorySheet, NothingFocusTimerScreen,
 │   │                # NothingArchiveVaultScreen, DotMatrixAudioPlayer,

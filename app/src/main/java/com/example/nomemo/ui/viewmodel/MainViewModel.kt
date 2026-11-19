@@ -156,6 +156,36 @@ class MainViewModel @JvmOverloads constructor(
         }
     }
 
+    fun updateNotePosition(noteId: Long, x: Float, y: Float) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val note = repository.getNoteById(noteId) ?: return@launch
+            repository.updateNote(note.copy(boardX = x, boardY = y))
+        }
+    }
+
+    fun linkNotes(sourceId: Long, targetId: Long) {
+        if (sourceId == targetId) return
+        viewModelScope.launch(Dispatchers.IO) {
+            val source = repository.getNoteById(sourceId) ?: return@launch
+            if (!source.linkedNoteIds.contains(targetId)) {
+                repository.updateNote(source.copy(linkedNoteIds = source.linkedNoteIds + targetId))
+            }
+        }
+    }
+
+    fun unlinkNotes(id1: Long, id2: Long) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val n1 = repository.getNoteById(id1)
+            if (n1 != null && n1.linkedNoteIds.contains(id2)) {
+                repository.updateNote(n1.copy(linkedNoteIds = n1.linkedNoteIds - id2))
+            }
+            val n2 = repository.getNoteById(id2)
+            if (n2 != null && n2.linkedNoteIds.contains(id1)) {
+                repository.updateNote(n2.copy(linkedNoteIds = n2.linkedNoteIds - id1))
+            }
+        }
+    }
+
     fun deleteNote(note: Note) {
         viewModelScope.launch {
             repository.deleteNote(note)

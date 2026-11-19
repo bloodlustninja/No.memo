@@ -116,6 +116,15 @@ class MainActivity : AppCompatActivity() {
                 onMirrorFolderClick = {
                     openDocumentTreeLauncher.launch(null)
                 },
+                onUpdateNotePosition = { noteId, x, y ->
+                    viewModel.updateNotePosition(noteId, x, y)
+                },
+                onLinkNotes = { sourceId, targetId ->
+                    viewModel.linkNotes(sourceId, targetId)
+                },
+                onUnlinkNotes = { id1, id2 ->
+                    viewModel.unlinkNotes(id1, id2)
+                },
                 onDockTextClick = {
                     // Handled inside MainNotesScreen via Flash Note overlay
                 },

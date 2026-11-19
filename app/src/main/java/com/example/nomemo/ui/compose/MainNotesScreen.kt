@@ -12,6 +12,8 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
@@ -47,6 +49,7 @@ import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.Checklist
 import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.material.icons.outlined.Hub
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.PushPin
@@ -115,6 +118,9 @@ fun MainNotesScreen(
     onBulkLock: ((List<Note>, Boolean) -> Unit)? = null,
     onSettingsClick: () -> Unit,
     onMirrorFolderClick: () -> Unit = {},
+    onUpdateNotePosition: (Long, Float, Float) -> Unit = { _, _, _ -> },
+    onLinkNotes: (Long, Long) -> Unit = { _, _ -> },
+    onUnlinkNotes: (Long, Long) -> Unit = { _, _ -> },
     onDockTextClick: () -> Unit,
     onDockChecklistClick: () -> Unit,
     onDockImageClick: () -> Unit,
@@ -137,7 +143,7 @@ fun MainNotesScreen(
     var showFlashNote by remember { mutableStateOf(false) }
     var showFocusTimer by remember { mutableStateOf(false) }
     var showArchiveVault by remember { mutableStateOf(false) }
-    var showKnowledgeGraph by remember { mutableStateOf(false) }
+    var isBoardView by remember { mutableStateOf(false) }
     var isBatchMode by remember { mutableStateOf(false) }
     val selectedNoteIds = remember { androidx.compose.runtime.mutableStateListOf<Long>() }
     val dissolvingNoteIds = remember { mutableStateListOf<Long>() }
@@ -350,7 +356,7 @@ fun MainNotesScreen(
 
                         Spacer(modifier = Modifier.width(6.dp))
 
-                        // Bento Knowledge Graph Button with tactile press
+                        // Secondary View Toggle Button (GRID / BOARD) with tactile press
                         Box(
                             modifier = Modifier
                                 .size(38.dp)
@@ -358,14 +364,14 @@ fun MainNotesScreen(
                                 .tactilePress {
                                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                     com.example.nomemo.ui.anim.NothingAudioFeedback.playTactileClick()
-                                    showKnowledgeGraph = true
+                                    isBoardView = !isBoardView
                                 },
                             contentAlignment = Alignment.Center,
                         ) {
                             Icon(
-                                imageVector = Icons.Outlined.Hub,
-                                contentDescription = "Knowledge Graph",
-                                tint = NothingThemeColors.iconInactive,
+                                imageVector = if (isBoardView) Icons.Outlined.GridView else Icons.Outlined.Hub,
+                                contentDescription = if (isBoardView) "Switch to Grid View" else "Switch to String Board",
+                                tint = if (isBoardView) NothingThemeColors.accentCrimson else NothingThemeColors.iconInactive,
                                 modifier = Modifier.size(20.dp),
                             )
                         }
@@ -943,19 +949,27 @@ fun MainNotesScreen(
                 )
             }
 
-            // Bento Knowledge Graph 2D Constellation Overlay
-            if (showKnowledgeGraph) {
-                BentoKnowledgeGraphScreen(
+            // Tactile Nothing OS String Board (Detective Pinboard) Canvas
+            AnimatedVisibility(
+                visible = isBoardView,
+                enter = fadeIn(animationSpec = spring(dampingRatio = 0.85f, stiffness = 420f)) +
+                        scaleIn(initialScale = 0.92f, animationSpec = spring(dampingRatio = 0.85f, stiffness = 420f)),
+                exit = fadeOut(animationSpec = spring(dampingRatio = 0.85f, stiffness = 420f)) +
+                        scaleOut(targetScale = 0.92f, animationSpec = spring(dampingRatio = 0.85f, stiffness = 420f)),
+            ) {
+                StringBoardScreen(
                     notes = notesList,
                     onOpenNote = { note ->
-                        showKnowledgeGraph = false
                         if (note.isLocked) {
                             lockedNoteForAuth = note
                         } else {
                             onNoteClick(note)
                         }
                     },
-                    onBackClick = { showKnowledgeGraph = false },
+                    onBackClick = { isBoardView = false },
+                    onUpdateNotePosition = onUpdateNotePosition,
+                    onLinkNotes = onLinkNotes,
+                    onUnlinkNotes = onUnlinkNotes,
                 )
             }
 
