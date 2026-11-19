@@ -7,6 +7,10 @@ import com.example.nomemo.data.db.AppDatabase
 import com.example.nomemo.data.entity.Note
 import com.example.nomemo.data.entity.NoteType
 import com.example.nomemo.data.repository.NoteRepository
+import com.example.nomemo.data.model.ChecklistItem
+import com.example.nomemo.share.DirectShareManager
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -27,6 +31,44 @@ class MainViewModel @JvmOverloads constructor(
     val activeTagFilter = MutableStateFlow<String?>(null)
 
     private val allActiveNotes = repository.getAllActiveNotes()
+
+    init {
+        viewModelScope.launch {
+            allActiveNotes.collect { notes ->
+                val pinned = notes.filter { it.isPinned }
+                DirectShareManager.updatePinnedDirectShareTargets(getApplication(), pinned)
+            }
+        }
+    }
+
+    fun appendSharedTextToNote(targetNoteId: Long, sharedText: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val notes = repository.getAllActiveNotes().first()
+            val target = if (targetNoteId > 0) {
+                notes.firstOrNull { it.id == targetNoteId }
+            } else {
+                notes.firstOrNull { it.isPinned } ?: notes.firstOrNull()
+            }
+
+            if (target != null) {
+                if (target.type == NoteType.CHECKLIST) {
+                    val updatedItems = target.checklistItems.toMutableList()
+                    updatedItems.add(ChecklistItem(text = sharedText))
+                    repository.updateNote(target.copy(checklistItems = updatedItems, timestamp = System.currentTimeMillis()))
+                } else {
+                    val newBody = if (target.body.isBlank()) sharedText else "${target.body}\n$sharedText"
+                    repository.updateNote(target.copy(body = newBody, timestamp = System.currentTimeMillis()))
+                }
+            } else {
+                val newNote = Note(
+                    title = "SHARED NOTE",
+                    body = sharedText,
+                    timestamp = System.currentTimeMillis(),
+                )
+                repository.insertNote(newNote)
+            }
+        }
+    }
 
     val archivedNotes: StateFlow<List<Note>> = repository.getArchivedNotes().stateIn(
         scope = viewModelScope,

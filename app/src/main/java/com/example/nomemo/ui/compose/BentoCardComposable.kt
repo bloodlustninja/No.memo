@@ -46,6 +46,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -85,6 +86,7 @@ fun BentoCardComposable(
     modifier: Modifier = Modifier,
 ) {
     val haptic = LocalHapticFeedback.current
+    val context = androidx.compose.ui.platform.LocalContext.current
     val dateFormat = remember { SimpleDateFormat("MMM dd", Locale.US) }
     val formattedDate = remember(note.timestamp) { dateFormat.format(Date(note.timestamp)).uppercase() }
     val wordCount = remember(note.body) {
@@ -158,6 +160,13 @@ fun BentoCardComposable(
                             val remainingMs = (note.burnExpiresAt ?: (note.timestamp + 24 * 3600 * 1000L)) - System.currentTimeMillis()
                             val hours = maxOf(0L, remainingMs / (1000 * 3600))
                             val countdownText = if (hours > 0) "${hours}H" else "${maxOf(1L, remainingMs / (1000 * 60))}M"
+
+                            val isFinalWarning = remainingMs in 1..(15 * 60 * 1000L)
+                            LaunchedEffect(note.id, isFinalWarning) {
+                                if (isFinalWarning) {
+                                    com.example.nomemo.glyph.GlyphHardwareManager.getInstance(context).setBurnWarning(true)
+                                }
+                            }
 
                             val burnTransition = rememberInfiniteTransition(label = "burnDotPulse")
                             val burnDotAlpha by burnTransition.animateFloat(
@@ -498,6 +507,7 @@ private fun BentoChecklistItemRow(
     onToggle: () -> Unit,
 ) {
     val haptic = LocalHapticFeedback.current
+    val context = androidx.compose.ui.platform.LocalContext.current
     val progress by animateFloatAsState(
         targetValue = if (item.isChecked) 1f else 0f,
         animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),

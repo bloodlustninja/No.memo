@@ -46,4 +46,8 @@ class PreferencesManager(context: Context) {
     var waveSpeedMs: Int
         get() = prefs.getInt(KEY_WAVE_SPEED_MS, 3600)
         set(value) = prefs.edit().putInt(KEY_WAVE_SPEED_MS, value).apply()
+
+    var markdownMirrorUri: String?
+        get() = prefs.getString("key_markdown_mirror_uri", null)
+        set(value) = prefs.edit().putString("key_markdown_mirror_uri", value).apply()
 }

@@ -64,6 +64,26 @@
 ### 14. ✨ Smart Note Text Cleaner & Formatter
 * **One-Tap Formatter (`SmartNoteIntelligence.kt`)**: Automatic text cleanup that trims excess whitespace, turns bullet points into interactive checklist items, and normalizes messy braindumps.
 
+### 15. 🤖 On-Device Android AppFunctions (Gemini Local Control)
+* **Background Local Schema Engine (`NoMemoAppFunctions.kt`)**: Exposes three zero-UI, on-device functions backed directly by Room `NoteRepository` and `androidx.appfunctions:appfunctions-service`:
+  * `createBurnNote`: Creates an ephemeral 24h self-destructing bento tile.
+  * `appendChecklistItem`: Natural language fuzzy title search (or top pinned checklist fallback) to append `[ ] <itemText>`.
+  * `logExpense`: Appends `<item> <amount> #<tag>` to the active/pinned Expense Ledger tile or creates a new `EXPENSES` ledger tile.
+  * Triggers immediate Glance home screen widget refreshes upon execution.
+
+### 16. 💡 Nothing Phone Glyph Interface Hardware Wrapper
+* **Reflection-Safe Glyph Manager (`GlyphHardwareManager.kt`)**: Safely detects Nothing OS and Nothing Glyph SDK (`com.nothing.ketchum.GlyphManager`) via reflection to prevent runtime crashes on non-Nothing devices and emulators with automatic tactile haptic fallbacks.
+* **Micro-Hardware Cues**:
+  * **Voice Transcription Pulse**: Fires a crisp 180ms single-zone rear Glyph pulse whenever `SpeechRecognizer` transcribes text into a note.
+  * **Final-Hour Burn Warning**: When an ephemeral Burn Note has $\le 15$ minutes remaining (monitored via `BurnTimerWorker` and live bento countdown), a subtle rear Glyph LED indicator lights up.
+
+### 17. 🗂️ Direct Share Targets & Local Markdown Folder Mirror (SAF)
+* **Dynamic Direct Share Targets (`DirectShareManager.kt`)**: Automatically publishes the user's top 2 pinned notes as Android Direct Share targets (`com.nomemo.share.TARGET_PINNED_NOTE`). Sharing text or URLs from any Android app directly appends to that tile with zero friction.
+* **Storage Access Framework (SAF) Folder Mirror (`MarkdownMirrorManager.kt`)**: User-designated directory mirror configured via the home screen More (⋮) menu (`"Mirror to Folder (.md)"`). All notes asynchronously mirror to `<sanitized-title>.md` with structured YAML frontmatter (`id`, `pinned`, `burnExpiresAt`, `updatedAt`, `type`, `tags`), and cleanly shred upon note deletion.
+
+### 18. 🎨 Nothing OS 5.0 Dot-Matrix Bento Branding & App Icon
+* **Dot-Matrix Disintegration Aesthetic**: Custom adaptive, monochrome, and round app icon suite featuring white dot-matrix bento tiles with a Nothing Red (`#D71921`) burn tile dissolving into the OLED black void. Fully supports Android 13+ themed monochromatic icons.
+
 ---
 
 ## 🌟 Quality of Life (QoL) Innovations

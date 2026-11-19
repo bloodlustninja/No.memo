@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "com.example.nomemo"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.example.nomemo"
@@ -67,6 +67,17 @@ dependencies {
     // Jetpack Glance Widget
     implementation("androidx.glance:glance-appwidget:1.1.1")
     implementation("androidx.glance:glance-material3:1.1.1")
+
+    // Android AppFunctions (Gemini Local Control)
+    implementation("androidx.appfunctions:appfunctions:1.0.0-alpha02")
+    implementation("androidx.appfunctions:appfunctions-service:1.0.0-alpha02")
+    ksp("androidx.appfunctions:appfunctions-compiler:1.0.0-alpha02")
+
+    // WorkManager (Background Burn Note Monitor)
+    implementation("androidx.work:work-runtime-ktx:2.9.1")
+
+    // Storage Access Framework DocumentFile
+    implementation("androidx.documentfile:documentfile:1.0.1")
 
     // Lifecycle / ViewModel
     implementation(libs.lifecycle.viewmodel.ktx)

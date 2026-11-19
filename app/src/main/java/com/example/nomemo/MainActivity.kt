@@ -41,6 +41,23 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private val openDocumentTreeLauncher = registerForActivityResult(
+        ActivityResultContracts.OpenDocumentTree(),
+    ) { uri: Uri? ->
+        uri?.let { treeUri ->
+            try {
+                contentResolver.takePersistableUriPermission(
+                    treeUri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
+                )
+            } catch (_: Exception) {}
+
+            prefsManager.markdownMirrorUri = treeUri.toString()
+            Toast.makeText(this, "MARKDOWN FOLDER MIRROR ACTIVE", Toast.LENGTH_SHORT).show()
+            com.example.nomemo.mirror.MarkdownMirrorManager.mirrorAllNotes(this, viewModel.notesList.value)
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         prefsManager = PreferencesManager(this)
         applyThemeFromPreferences()
@@ -96,6 +113,9 @@ class MainActivity : AppCompatActivity() {
                 onSettingsClick = {
                     startActivity(Intent(this, SettingsActivity::class.java))
                 },
+                onMirrorFolderClick = {
+                    openDocumentTreeLauncher.launch(null)
+                },
                 onDockTextClick = {
                     // Handled inside MainNotesScreen via Flash Note overlay
                 },
@@ -150,6 +170,13 @@ class MainActivity : AppCompatActivity() {
         if (intent == null) return
         if (intent.action == com.example.nomemo.widget.NothingBentoWidgetProvider.ACTION_VOICE_CAPTURE) {
             openEditor(type = NoteType.AUDIO)
+        } else if (intent.action == Intent.ACTION_SEND && (intent.type?.startsWith("text/") == true || intent.hasExtra(Intent.EXTRA_TEXT))) {
+            val sharedText = intent.getStringExtra(Intent.EXTRA_TEXT) ?: intent.getStringExtra(Intent.EXTRA_STREAM)
+            val targetNoteId = intent.getLongExtra(com.example.nomemo.share.DirectShareManager.EXTRA_TARGET_NOTE_ID, -1L)
+            if (!sharedText.isNullOrBlank()) {
+                viewModel.appendSharedTextToNote(targetNoteId, sharedText)
+                Toast.makeText(this, "APPENDED TO NOTE", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 

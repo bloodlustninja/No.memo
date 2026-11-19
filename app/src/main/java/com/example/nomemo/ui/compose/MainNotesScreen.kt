@@ -48,6 +48,9 @@ import androidx.compose.material.icons.outlined.Hub
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.MoreVert
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -108,6 +111,7 @@ fun MainNotesScreen(
     onBulkPin: ((List<Note>, Boolean) -> Unit)? = null,
     onBulkLock: ((List<Note>, Boolean) -> Unit)? = null,
     onSettingsClick: () -> Unit,
+    onMirrorFolderClick: () -> Unit = {},
     onDockTextClick: () -> Unit,
     onDockChecklistClick: () -> Unit,
     onDockImageClick: () -> Unit,
@@ -345,23 +349,65 @@ fun MainNotesScreen(
 
                         Spacer(modifier = Modifier.width(6.dp))
 
-                        // Settings Button with tactile press
+                        // More (⋮) Overflow Menu with tactile press
+                        var showMoreMenu by remember { mutableStateOf(false) }
                         Box(
                             modifier = Modifier
                                 .size(38.dp)
                                 .clip(CircleShape)
                                 .tactilePress {
                                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                    onSettingsClick()
+                                    showMoreMenu = true
                                 },
                             contentAlignment = Alignment.Center,
                         ) {
                             Icon(
-                                imageVector = Icons.Outlined.Settings,
-                                contentDescription = "Settings",
+                                imageVector = Icons.Outlined.MoreVert,
+                                contentDescription = "More Options",
                                 tint = NothingThemeColors.iconInactive,
                                 modifier = Modifier.size(20.dp),
                             )
+
+                            DropdownMenu(
+                                expanded = showMoreMenu,
+                                onDismissRequest = { showMoreMenu = false },
+                                modifier = Modifier
+                                    .background(NothingThemeColors.surface)
+                                    .border(1.dp, NothingThemeColors.cardBorder, RoundedCornerShape(12.dp))
+                            ) {
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            "MIRROR TO FOLDER (.MD)",
+                                            fontFamily = FontFamily.Monospace,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            color = NothingThemeColors.textPrimary,
+                                            letterSpacing = 1.sp,
+                                        )
+                                    },
+                                    onClick = {
+                                        showMoreMenu = false
+                                        onMirrorFolderClick()
+                                    },
+                                )
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            "SETTINGS",
+                                            fontFamily = FontFamily.Monospace,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            color = NothingThemeColors.textPrimary,
+                                            letterSpacing = 1.sp,
+                                        )
+                                    },
+                                    onClick = {
+                                        showMoreMenu = false
+                                        onSettingsClick()
+                                    },
+                                )
+                            }
                         }
                     }
                 }

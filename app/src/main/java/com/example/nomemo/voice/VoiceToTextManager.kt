@@ -140,6 +140,7 @@ class VoiceToTextManager(private val context: Context) : RecognitionListener {
             if (phrase.isNotBlank()) {
                 baseText = if (baseText.isBlank()) phrase else "$baseText $phrase".trim()
                 _spokenText.value = baseText
+                com.example.nomemo.glyph.GlyphHardwareManager.getInstance(context).pulseTranscriptionConfirmation()
             }
         }
 
