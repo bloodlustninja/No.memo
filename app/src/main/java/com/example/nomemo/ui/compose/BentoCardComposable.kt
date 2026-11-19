@@ -92,8 +92,17 @@ fun BentoCardComposable(
     }
     val firstImageUri = remember(note.imageUris) { note.imageUris.firstOrNull() }
     var isUnlockedLocally by remember(note.id) { mutableStateOf(!note.isLocked) }
-    val ledgerAnalysis = remember(note.body, note.title) {
-        ExpenseParser.parse("${note.title}\n${note.body}")
+    val ledgerAnalysis = remember(note.body, note.title, note.checklistItems) {
+        val fullText = buildString {
+            append(note.title)
+            append("\n")
+            append(note.body)
+            if (note.checklistItems.isNotEmpty()) {
+                append("\n")
+                append(note.checklistItems.joinToString("\n") { it.text })
+            }
+        }
+        ExpenseParser.parse(fullText)
     }
 
     FrostedBentoCard(
@@ -424,9 +433,11 @@ fun RollingOdometerBadge(
     currencySymbol: String = "₹",
     modifier: Modifier = Modifier,
 ) {
+    val isNegative = total < 0
     val formatted = remember(total) {
-        ExpenseParser.formatAmountWithCommas(total)
+        ExpenseParser.formatAmountWithCommas(kotlin.math.abs(total))
     }
+    val prefix = if (isNegative) "TOTAL -$currencySymbol" else "TOTAL $currencySymbol"
 
     Row(
         modifier = modifier
@@ -437,11 +448,11 @@ fun RollingOdometerBadge(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            text = "TOTAL $currencySymbol",
+            text = prefix,
             fontFamily = FontFamily.Monospace,
             fontSize = 9.sp,
             fontWeight = FontWeight.Bold,
-            color = NothingThemeColors.textPrimary,
+            color = if (isNegative) NothingThemeColors.accentCrimson else NothingThemeColors.textPrimary,
             letterSpacing = 0.5.sp,
         )
         Spacer(modifier = Modifier.width(2.dp))
@@ -465,7 +476,7 @@ fun RollingOdometerBadge(
                         fontFamily = FontFamily.Monospace,
                         fontSize = 9.sp,
                         fontWeight = FontWeight.Bold,
-                        color = NothingThemeColors.textPrimary,
+                        color = if (isNegative) NothingThemeColors.accentCrimson else NothingThemeColors.textPrimary,
                     )
                 }
             } else {
@@ -474,7 +485,7 @@ fun RollingOdometerBadge(
                     fontFamily = FontFamily.Monospace,
                     fontSize = 9.sp,
                     fontWeight = FontWeight.Bold,
-                    color = NothingThemeColors.textPrimary,
+                    color = if (isNegative) NothingThemeColors.accentCrimson else NothingThemeColors.textPrimary,
                 )
             }
         }

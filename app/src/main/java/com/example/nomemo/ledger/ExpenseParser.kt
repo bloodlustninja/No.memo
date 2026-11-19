@@ -16,9 +16,13 @@ data class ExpenseEntry(
     val rawLine: String,
     val description: String,
     val amount: Double,
+    val isNegative: Boolean = false,
     val isCredit: Boolean = false,
     val tags: List<String> = emptyList(),
-)
+) {
+    val signedAmount: Double
+        get() = if (isNegative) -amount else amount
+}
 
 /**
  * Line analysis result with formatted badge for editor right-alignment.
@@ -43,7 +47,7 @@ data class LedgerAnalysis(
     val currencySymbol: String = "₹",
 ) {
     val perPersonSplit: Double?
-        get() = if (splitCount != null && splitCount > 0 && totalExpense > 0) totalExpense / splitCount else null
+        get() = if (splitCount != null && splitCount > 0 && totalExpense != 0.0) totalExpense / splitCount else null
 
     val remainingBudget: Double?
         get() = if (capAmount != null) capAmount - totalExpense else null
@@ -58,8 +62,9 @@ data class LedgerAnalysis(
 /**
  * Pure Kotlin Auto-Ledger Parser Engine for Nothing OS 5.0 Bento Notes.
  *
- * Scans note lines for monetary entries ("Fuel 450", "Coffee -180", "₹1,200 groceries", "+5000 split", "#tags"),
- * supports "/cap <amount>" spending limits and "/split <count>" calculations, and activates strictly when at least
+ * Scans note lines for monetary entries ("Fuel 450", "Coffee -180", "₹1,200 groceries", "+5000 split", "100 - 50", "#tags"),
+ * properly handles negative amounts / deductions (-180, -₹180, Discount -50),
+ * supports optional inline directives "/cap <amount>" and "/split <count>", and activates strictly when at least
  * 2 valid expense lines or explicit directives are present.
  */
 object ExpenseParser {
@@ -70,7 +75,11 @@ object ExpenseParser {
         "apr", "may", "jun", "jul", "aug", "sep", "oct",
     )
 
-    private val CAP_REGEX = "(?:^|\\s)[#/]cap\\s+([₹$€£Rs\\.]*\\s*[\\d,]+(?:\\.\\d{1,2})?)".toRegex(RegexOption.IGNORE_CASE)
+    private val DEDUCTION_KEYWORDS = setOf(
+        "discount", "refund", "cashback", "coupon", "rebate", "deduct", "deduction", "return", "less", "minus", "off", "saving", "savings",
+    )
+
+    private val CAP_REGEX = "(?:^|\\s)[#/]cap\\s+([+-]?\\s*[₹$€£Rs\\.]*\\s*[\\d,]+(?:\\.\\d{1,2})?)".toRegex(RegexOption.IGNORE_CASE)
     private val SPLIT_REGEX = "(?:^|\\s)[#/]split\\s+(\\d+)".toRegex(RegexOption.IGNORE_CASE)
     private val TAG_REGEX = "#([a-zA-Z0-9_]+)".toRegex()
     private val CURRENCY_SYMBOL_REGEX = "([₹$€£]|Rs\\.?|INR)".toRegex(RegexOption.IGNORE_CASE)
@@ -132,15 +141,20 @@ object ExpenseParser {
         // Ledger Mode triggers only if >= 2 valid lines OR explicit /cap or #expense tag
         val isLedgerMode = entries.size >= 2 || capAmount != null || hasExpenseTag
 
-        // Calculate total expense
-        val expenseSum = entries.filter { !it.isCredit }.sumOf { it.amount }
-        val creditSum = entries.filter { it.isCredit }.sumOf { it.amount }
-        val totalExpense = if (expenseSum > 0 && creditSum > 0) {
-            maxOf(0.0, expenseSum - creditSum)
-        } else if (expenseSum > 0) {
-            expenseSum
-        } else {
-            creditSum
+        val positiveEntries = entries.filter { !it.isNegative }
+        val negativeEntries = entries.filter { it.isNegative }
+
+        val positiveSum = positiveEntries.sumOf { it.amount }
+        val negativeSum = negativeEntries.sumOf { it.amount }
+
+        val totalExpense = when {
+            // Both positive and negative entries: subtract negative deductions from positive expenses
+            positiveEntries.isNotEmpty() && negativeEntries.isNotEmpty() -> positiveSum - negativeSum
+            // Only positive entries: sum of positive entries
+            positiveEntries.isNotEmpty() -> positiveSum
+            // Only negative entries: if user logged expenses using minus signs, total magnitude of expenses
+            negativeEntries.isNotEmpty() -> negativeSum
+            else -> 0.0
         }
 
         return LedgerAnalysis(
@@ -189,18 +203,66 @@ object ExpenseParser {
         val textWithoutTags = trimmed.replace(TAG_REGEX, "").trim()
         if (textWithoutTags.isEmpty()) return null
 
-        // Pattern 1: Explicit Currency Symbol (e.g., "₹1,200 groceries", "groceries ₹1,200", "$50 lunch")
-        val currRegex = "([₹$€£]|Rs\\.?|INR)\\s*([+-]?\\s*[\\d,]+(?:\\.\\d{1,2})?)".toRegex(RegexOption.IGNORE_CASE)
+        // Pattern 1: Inline Arithmetic Expression on a single line (e.g. "500 - 180", "100 - 50", "Dinner 500 - 100", "1000 - 200 + 50")
+        val mathRegex = "^(.*?)(?:^|\\s)([\\d,]+(?:\\.\\d{1,2})?\\s*(?:[+-]\\s*[\\d,]+(?:\\.\\d{1,2})?)+)(?:\\s+(.*?))?$".toRegex()
+        val mathMatch = mathRegex.find(textWithoutTags)
+        if (mathMatch != null) {
+            val expr = mathMatch.groupValues[2].trim()
+            val termRegex = "([+-]?)\\s*([\\d,]+(?:\\.\\d{1,2})?)".toRegex()
+            var netEval = 0.0
+            var termCount = 0
+            for (term in termRegex.findAll(expr)) {
+                val sign = term.groupValues[1].trim()
+                val num = term.groupValues[2].replace(",", "").toDoubleOrNull()
+                if (num != null) {
+                    termCount++
+                    if (sign == "-") {
+                        netEval -= num
+                    } else {
+                        netEval += num
+                    }
+                }
+            }
+            if (termCount >= 2) {
+                val prefixDesc = mathMatch.groupValues[1].trim()
+                val suffixDesc = mathMatch.groupValues[3].trim()
+                val desc = listOf(prefixDesc, suffixDesc).filter { it.isNotBlank() }.joinToString(" ")
+                    .replace(":", "").trim().ifBlank { "Calculation" }
+                val isNeg = netEval < 0
+                val absVal = abs(netEval)
+                val badge = (if (isNeg) "-" else "") + "$currencySymbol${formatAmountWithCommas(absVal)}"
+                return ParsedLine(
+                    lineText = trimmed,
+                    entry = ExpenseEntry(
+                        rawLine = trimmed,
+                        description = desc,
+                        amount = absVal,
+                        isNegative = isNeg,
+                        isCredit = !isNeg,
+                        tags = tags,
+                    ),
+                    formattedBadge = badge,
+                )
+            }
+        }
+
+        // Pattern 2: Explicit Currency Symbol with optional minus/plus before OR after symbol
+        // (e.g., "-₹180", "- ₹180", "₹-180", "-$50", "+₹5000", "₹1,200 groceries", "Coffee -₹180")
+        val currRegex = "(?:^|\\s)([+-]?)\\s*([₹$€£]|Rs\\.?|INR)\\s*([+-]?)\\s*([\\d,]+(?:\\.\\d{1,2})?)(?:\\s|$)".toRegex(RegexOption.IGNORE_CASE)
         val currMatch = currRegex.find(textWithoutTags)
         if (currMatch != null) {
-            val sym = currMatch.groupValues[1]
-            val numStr = currMatch.groupValues[2].replace(",", "").replace(" ", "")
+            val preSign = currMatch.groupValues[1].trim()
+            val sym = currMatch.groupValues[2].trim()
+            val postSign = currMatch.groupValues[3].trim()
+            val numStr = currMatch.groupValues[4].replace(",", "").trim()
             val amountVal = numStr.toDoubleOrNull()
             if (amountVal != null) {
-                val isCredit = numStr.startsWith("+")
-                val desc = textWithoutTags.replace(currMatch.value, "").trim().ifBlank { "Expense" }
+                val isNegative = preSign == "-" || postSign == "-"
+                val isCredit = preSign == "+" || postSign == "+"
+                val desc = textWithoutTags.replace(currMatch.value, "").replace(":", "").trim()
+                    .ifBlank { if (isNegative) "Deduction" else "Expense" }
                 val absAmount = abs(amountVal)
-                val badge = (if (isCredit) "+" else if (numStr.startsWith("-")) "-" else "") +
+                val badge = (if (isNegative) "-" else if (isCredit) "+" else "") +
                     "$currencySymbol${formatAmountWithCommas(absAmount)}"
                 return ParsedLine(
                     lineText = trimmed,
@@ -208,6 +270,7 @@ object ExpenseParser {
                         rawLine = trimmed,
                         description = desc,
                         amount = absAmount,
+                        isNegative = isNegative,
                         isCredit = isCredit,
                         tags = tags,
                     ),
@@ -216,23 +279,28 @@ object ExpenseParser {
             }
         }
 
-        // Pattern 2: Explicit signed number (e.g., "Coffee -180", "+5000 split", "Refund +200")
-        val signedRegex = "(?:^|\\s)([+-]\\s*[\\d,]+(?:\\.\\d{1,2})?)(?:\\s|$)".toRegex()
-        val signedMatch = signedRegex.find(textWithoutTags)
-        if (signedMatch != null) {
-            val numStr = signedMatch.groupValues[1].replace(",", "").replace(" ", "")
+        // Pattern 3: Trailing Currency Symbol (e.g. "180₹", "-180₹", "50$")
+        val trailingCurrRegex = "(?:^|\\s)([+-]?)\\s*([\\d,]+(?:\\.\\d{1,2})?)\\s*([₹$€£]|Rs\\.?|INR)(?:\\s|$)".toRegex(RegexOption.IGNORE_CASE)
+        val trailingCurrMatch = trailingCurrRegex.find(textWithoutTags)
+        if (trailingCurrMatch != null) {
+            val sign = trailingCurrMatch.groupValues[1].trim()
+            val numStr = trailingCurrMatch.groupValues[2].replace(",", "").trim()
             val amountVal = numStr.toDoubleOrNull()
             if (amountVal != null) {
-                val isCredit = numStr.startsWith("+")
-                val desc = textWithoutTags.replace(signedMatch.groupValues[1], "").trim().ifBlank { "Expense" }
+                val isNegative = sign == "-"
+                val isCredit = sign == "+"
+                val desc = textWithoutTags.replace(trailingCurrMatch.value, "").replace(":", "").trim()
+                    .ifBlank { if (isNegative) "Deduction" else "Expense" }
                 val absAmount = abs(amountVal)
-                val badge = (if (isCredit) "+" else "-") + "$currencySymbol${formatAmountWithCommas(absAmount)}"
+                val badge = (if (isNegative) "-" else if (isCredit) "+" else "") +
+                    "$currencySymbol${formatAmountWithCommas(absAmount)}"
                 return ParsedLine(
                     lineText = trimmed,
                     entry = ExpenseEntry(
                         rawLine = trimmed,
                         description = desc,
                         amount = absAmount,
+                        isNegative = isNegative,
                         isCredit = isCredit,
                         tags = tags,
                     ),
@@ -241,23 +309,57 @@ object ExpenseParser {
             }
         }
 
-        // Pattern 3: Trailing number without symbol (e.g., "Fuel 450", "Coffee 180", "Groceries 1,200")
-        val trailingRegex = "^(.+?)\\s+([\\d,]+(?:\\.\\d{1,2})?)$".toRegex()
+        // Pattern 4: Explicit signed number without currency symbol
+        // (e.g., "Coffee -180", "Coffee - 180", "Coffee-180", "+5000 split", "-180", "- 180", "+500")
+        val signedRegex = "(?:^|\\s|[a-zA-Z:])([+-])\\s*([\\d,]+(?:\\.\\d{1,2})?)(?:\\s|$)".toRegex()
+        val signedMatch = signedRegex.find(textWithoutTags)
+        if (signedMatch != null) {
+            val sign = signedMatch.groupValues[1].trim()
+            val numStr = signedMatch.groupValues[2].replace(",", "").trim()
+            val amountVal = numStr.toDoubleOrNull()
+            if (amountVal != null) {
+                val isNegative = sign == "-"
+                val isCredit = sign == "+"
+                val matchedFull = signedMatch.value
+                val desc = textWithoutTags.replace(matchedFull, "").replace(":", "").trim()
+                    .ifBlank { if (isNegative) "Deduction" else "Expense" }
+                val absAmount = abs(amountVal)
+                val badge = (if (isNegative) "-" else "+") + "$currencySymbol${formatAmountWithCommas(absAmount)}"
+                return ParsedLine(
+                    lineText = trimmed,
+                    entry = ExpenseEntry(
+                        rawLine = trimmed,
+                        description = desc,
+                        amount = absAmount,
+                        isNegative = isNegative,
+                        isCredit = isCredit,
+                        tags = tags,
+                    ),
+                    formattedBadge = badge,
+                )
+            }
+        }
+
+        // Pattern 5: Trailing number without symbol (e.g., "Fuel 450", "Coffee: 180", "Groceries 1,200", "Discount 50")
+        val trailingRegex = "^(.+?)(?:\\s+|:\\s*)([\\d,]+(?:\\.\\d{1,2})?)$".toRegex()
         val trailingMatch = trailingRegex.find(textWithoutTags)
         if (trailingMatch != null) {
-            val desc = trailingMatch.groupValues[1].trim()
+            val desc = trailingMatch.groupValues[1].replace(":", "").trim()
             val numStr = trailingMatch.groupValues[2].replace(",", "")
             val amountVal = numStr.toDoubleOrNull()
             if (amountVal != null && amountVal >= 1.0) {
-                val lastWord = desc.split("\\s+".toRegex()).lastOrNull()?.lowercase()
+                val words = desc.lowercase().split("\\s+".toRegex())
+                val lastWord = words.lastOrNull()
                 if (lastWord == null || !STOP_WORDS.contains(lastWord)) {
-                    val badge = "$currencySymbol${formatAmountWithCommas(amountVal)}"
+                    val isNegative = words.any { DEDUCTION_KEYWORDS.contains(it) }
+                    val badge = (if (isNegative) "-" else "") + "$currencySymbol${formatAmountWithCommas(amountVal)}"
                     return ParsedLine(
                         lineText = trimmed,
                         entry = ExpenseEntry(
                             rawLine = trimmed,
                             description = desc,
                             amount = amountVal,
+                            isNegative = isNegative,
                             isCredit = false,
                             tags = tags,
                         ),
@@ -267,12 +369,37 @@ object ExpenseParser {
             }
         }
 
-        // Pattern 4: Leading number without symbol (e.g., "450 fuel", "1200 groceries")
+        // Pattern 6: Leading number without symbol (e.g., "450 fuel", "1200 groceries", "50 discount")
         val leadingRegex = "^([\\d,]+(?:\\.\\d{1,2})?)\\s+([a-zA-Z].*)$".toRegex()
         val leadingMatch = leadingRegex.find(textWithoutTags)
         if (leadingMatch != null) {
             val numStr = leadingMatch.groupValues[1].replace(",", "")
-            val desc = leadingMatch.groupValues[2].trim()
+            val desc = leadingMatch.groupValues[2].replace(":", "").trim()
+            val amountVal = numStr.toDoubleOrNull()
+            if (amountVal != null && amountVal >= 1.0) {
+                val words = desc.lowercase().split("\\s+".toRegex())
+                val isNegative = words.any { DEDUCTION_KEYWORDS.contains(it) }
+                val badge = (if (isNegative) "-" else "") + "$currencySymbol${formatAmountWithCommas(amountVal)}"
+                return ParsedLine(
+                    lineText = trimmed,
+                    entry = ExpenseEntry(
+                        rawLine = trimmed,
+                        description = desc,
+                        amount = amountVal,
+                        isNegative = isNegative,
+                        isCredit = false,
+                        tags = tags,
+                    ),
+                    formattedBadge = badge,
+                )
+            }
+        }
+
+        // Pattern 7: Standalone positive number on its own line (e.g., "450", "1,200", "500.50")
+        val standaloneRegex = "^([\\d,]+(?:\\.\\d{1,2})?)$".toRegex()
+        val standaloneMatch = standaloneRegex.find(textWithoutTags)
+        if (standaloneMatch != null) {
+            val numStr = standaloneMatch.groupValues[1].replace(",", "")
             val amountVal = numStr.toDoubleOrNull()
             if (amountVal != null && amountVal >= 1.0) {
                 val badge = "$currencySymbol${formatAmountWithCommas(amountVal)}"
@@ -280,8 +407,9 @@ object ExpenseParser {
                     lineText = trimmed,
                     entry = ExpenseEntry(
                         rawLine = trimmed,
-                        description = desc,
+                        description = "Expense",
                         amount = amountVal,
+                        isNegative = false,
                         isCredit = false,
                         tags = tags,
                     ),
@@ -300,7 +428,15 @@ object ExpenseParser {
         val isWhole = (amount % 1.0) == 0.0
         val absAmount = abs(amount)
         val formatter = DecimalFormat(if (isWhole) "#,##0" else "#,##0.00")
-        return (if (amount < 0) "-" else "") + formatter.format(absAmount)
+        return formatter.format(absAmount)
+    }
+
+    /**
+     * Formats a signed monetary amount with currency symbol (e.g. 1450.0 -> "₹1,450", -180.0 -> "-₹180").
+     */
+    fun formatCurrency(amount: Double, currencySymbol: String = "₹"): String {
+        val formatted = formatAmountWithCommas(abs(amount))
+        return if (amount < 0) "-$currencySymbol$formatted" else "$currencySymbol$formatted"
     }
 
     /**
@@ -331,8 +467,12 @@ object ExpenseParser {
         val sb = StringBuilder()
         sb.appendLine("Date,Description,Amount (${analysis.currencySymbol}),Type,Tags")
         for (entry in analysis.entries) {
-            val typeStr = if (entry.isCredit) "Income/Credit" else "Expense"
-            val signedAmount = if (entry.isCredit) "+${entry.amount}" else "${entry.amount}"
+            val typeStr = when {
+                entry.isNegative -> "Deduction"
+                entry.isCredit -> "Income/Credit"
+                else -> "Expense"
+            }
+            val signedAmount = if (entry.isNegative) "-${entry.amount}" else if (entry.isCredit) "+${entry.amount}" else "${entry.amount}"
             val tagsStr = entry.tags.joinToString(" ") { "#$it" }
             sb.appendLine("\"$today\",\"${entry.description.replace("\"", "\"\"")}\",$signedAmount,$typeStr,\"$tagsStr\"")
         }

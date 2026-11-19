@@ -136,8 +136,17 @@ fun NothingNoteEditorScreen(
 
     // Text-driven Auto-Ledger state and layout tracking
     var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
-    val ledgerAnalysis = remember(title, body) {
-        ExpenseParser.parse("$title\n$body")
+    val ledgerAnalysis = remember(title, body, checklistItems.toList()) {
+        val fullText = buildString {
+            append(title)
+            append("\n")
+            append(body)
+            if (checklistItems.isNotEmpty()) {
+                append("\n")
+                append(checklistItems.joinToString("\n") { it.text })
+            }
+        }
+        ExpenseParser.parse(fullText)
     }
 
     // Voice Dictation (SpeechRecognizer via VoiceToTextManager)
@@ -619,7 +628,19 @@ fun NothingNoteEditorScreen(
                             onValueChange = { newBody ->
                                 // Inline Smart Checklists: typing "[] " or "- " at start of line converts that line
                                 val lines = newBody.split("\n")
-                                val triggerIndex = lines.indexOfFirst { it.startsWith("[] ") || it.startsWith("- ") }
+                                val triggerIndex = lines.indexOfFirst { line ->
+                                    if (line.startsWith("[] ")) {
+                                        true
+                                    } else if (line.startsWith("- ")) {
+                                        val rest = line.removePrefix("- ").trimStart()
+                                        // If line starts with a number, math, or currency symbol (e.g. "- 180" or "- ₹50"),
+                                        // it is an expense deduction, NOT a checklist item!
+                                        val isExpenseNumber = rest.matches("^[+-]?\\s*[₹$€£RsINR]*\\s*[\\d,]+.*".toRegex(RegexOption.IGNORE_CASE))
+                                        !isExpenseNumber
+                                    } else {
+                                        false
+                                    }
+                                }
                                 if (triggerIndex != -1) {
                                     val triggerLine = lines[triggerIndex]
                                     val itemText = if (triggerLine.startsWith("[] ")) {
@@ -736,11 +757,11 @@ fun NothingNoteEditorScreen(
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Text(
-                                    text = "TOTAL: ${ledgerAnalysis.currencySymbol}${ExpenseParser.formatAmountWithCommas(ledgerAnalysis.totalExpense)}",
+                                    text = "TOTAL: ${ExpenseParser.formatCurrency(ledgerAnalysis.totalExpense, ledgerAnalysis.currencySymbol)}",
                                     fontFamily = FontFamily.Monospace,
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = NothingThemeColors.textPrimary,
+                                    color = if (ledgerAnalysis.totalExpense < 0) NothingThemeColors.accentCrimson else NothingThemeColors.textPrimary,
                                     letterSpacing = 0.5.sp,
                                 )
 
@@ -752,7 +773,7 @@ fun NothingNoteEditorScreen(
                                         color = NothingThemeColors.textMuted,
                                     )
                                     Text(
-                                        text = "${ledgerAnalysis.splitCount} WAYS: ${ledgerAnalysis.currencySymbol}${ExpenseParser.formatAmountWithCommas(ledgerAnalysis.perPersonSplit!!)}/ea",
+                                        text = "${ledgerAnalysis.splitCount} WAYS: ${ExpenseParser.formatCurrency(ledgerAnalysis.perPersonSplit!!, ledgerAnalysis.currencySymbol)}/ea",
                                         fontFamily = FontFamily.Monospace,
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Bold,

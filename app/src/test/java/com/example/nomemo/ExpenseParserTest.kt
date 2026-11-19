@@ -23,9 +23,85 @@ class ExpenseParserTest {
         val analysis = ExpenseParser.parse(noteText)
         assertTrue(analysis.isLedgerMode)
         assertEquals(5, analysis.entries.size)
-        // Fuel (450) + Coffee (180) + groceries (1200) + Dinner (350) - credit 5000:
-        // expenseSum = 2180, creditSum = 5000
+        // Fuel (450) + groceries (1200) + split (5000) + Dinner (350) - Coffee (180):
+        // 7000 - 180 = 6820
+        assertEquals(6820.0, analysis.totalExpense, 0.001)
         assertEquals("₹", analysis.currencySymbol)
+    }
+
+    @Test
+    fun testNegativeAmountsDeductCorrectly() {
+        val noteText = """
+            Fuel 450
+            Coffee -180
+            Groceries 1000
+        """.trimIndent()
+
+        val analysis = ExpenseParser.parse(noteText)
+        assertTrue(analysis.isLedgerMode)
+        assertEquals(3, analysis.entries.size)
+        // 450 - 180 + 1000 = 1270
+        assertEquals(1270.0, analysis.totalExpense, 0.001)
+    }
+
+    @Test
+    fun testNegativeAmountsWithDifferentMinusFormats() {
+        val noteText = """
+            Dinner 500
+            -180
+            Discount -50
+            Coffee - 50
+            Lunch -₹100
+        """.trimIndent()
+
+        val analysis = ExpenseParser.parse(noteText)
+        assertTrue(analysis.isLedgerMode)
+        assertEquals(5, analysis.entries.size)
+        // 500 - 180 - 50 - 50 - 100 = 120
+        assertEquals(120.0, analysis.totalExpense, 0.001)
+    }
+
+    @Test
+    fun testInlineArithmeticCalculation() {
+        val noteText = """
+            500 - 180
+            Dinner 1000 - 200
+        """.trimIndent()
+
+        val analysis = ExpenseParser.parse(noteText)
+        assertTrue(analysis.isLedgerMode)
+        assertEquals(2, analysis.entries.size)
+        // (500 - 180) = 320, (1000 - 200) = 800 -> 320 + 800 = 1120
+        assertEquals(1120.0, analysis.totalExpense, 0.001)
+    }
+
+    @Test
+    fun testAllNegativeEntries() {
+        val noteText = """
+            -180 coffee
+            -50 tea
+        """.trimIndent()
+
+        val analysis = ExpenseParser.parse(noteText)
+        assertTrue(analysis.isLedgerMode)
+        assertEquals(2, analysis.entries.size)
+        // All negative expenses: total magnitude = 230
+        assertEquals(230.0, analysis.totalExpense, 0.001)
+    }
+
+    @Test
+    fun testNegativeWithCapBudget() {
+        val noteText = """
+            /cap 500
+            Shopping 400
+            Return -100
+        """.trimIndent()
+
+        val analysis = ExpenseParser.parse(noteText)
+        assertTrue(analysis.isLedgerMode)
+        assertEquals(300.0, analysis.totalExpense, 0.001)
+        assertEquals(200.0, analysis.remainingBudget ?: 0.0, 0.001)
+        assertFalse(analysis.isCapExceededOrNearLimit)
     }
 
     @Test
