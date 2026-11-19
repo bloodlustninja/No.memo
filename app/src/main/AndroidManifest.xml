@@ -55,7 +55,19 @@
             android:name=".reminder.ReminderReceiver"
             android:exported="false" />
 
-        <!-- Nothing OS 5.0 Physical Glyph Matrix Bento Widget -->
+        <!-- Nothing OS 5.0 Physical Glyph Matrix Bento Widget (Jetpack Glance) -->
+        <receiver
+            android:name=".widget.NothingBentoWidgetReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_nothing_bento_info" />
+        </receiver>
+
+        <!-- Legacy Provider Alias for Existing Placed Widgets -->
         <receiver
             android:name=".widget.NothingBentoWidgetProvider"
             android:exported="true">

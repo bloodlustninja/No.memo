@@ -51,6 +51,7 @@ class MainActivity : AppCompatActivity() {
         )
 
         super.onCreate(savedInstanceState)
+        handleIncomingIntent(intent)
 
         setContent {
             val notes by viewModel.notesList.collectAsState()
@@ -137,6 +138,19 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         applyThemeFromPreferences()
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleIncomingIntent(intent)
+    }
+
+    private fun handleIncomingIntent(intent: Intent?) {
+        if (intent == null) return
+        if (intent.action == com.example.nomemo.widget.NothingBentoWidgetProvider.ACTION_VOICE_CAPTURE) {
+            openEditor(type = NoteType.AUDIO)
+        }
     }
 
     private fun applyThemeFromPreferences() {

@@ -64,6 +64,10 @@ dependencies {
     // Gson
     implementation(libs.gson)
 
+    // Jetpack Glance Widget
+    implementation("androidx.glance:glance-appwidget:1.1.1")
+    implementation("androidx.glance:glance-material3:1.1.1")
+
     // Lifecycle / ViewModel
     implementation(libs.lifecycle.viewmodel.ktx)
     implementation(libs.lifecycle.runtime.ktx)
