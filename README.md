@@ -18,7 +18,7 @@
 ## ✨ System Architecture & Key Innovations
 
 ### 1. 🔤 Kinetic Typography & Telemetry Matrix
-* **Mechanical Glyph Scrambler (`KineticDotMatrixText.kt`)**: Headers and cards scramble through pseudo-random matrix characters (`░`, `▒`, `▓`, `•`, `*`, `0`, `1`, `X`) before locking into place, mimicking the physical LED dot-matrix displays of Nothing hardware.
+* **Clean Dot-Matrix Typography (`KineticDotMatrixText.kt`)**: Headers and cards render in authentic, razor-sharp Nothing OS monospace typography with zero character scrambling or visual noise.
 * **Real-time Live Telemetry HUD (`KineticTelemetryValue.kt`)**: Monospace telemetry calculates real-time typing speed (**WPM**), character count, word count, and reading duration with zero perceptible lag.
 
 ### 2. ⚡ Zero-Friction "Flash Note" Quick-Draw Scratchpad
