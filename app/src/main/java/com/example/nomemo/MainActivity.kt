@@ -36,14 +36,16 @@ class MainActivity : AppCompatActivity() {
         ActivityResultContracts.GetContent(),
     ) { uri: Uri? ->
         uri?.let {
-            try {
-                contentResolver.takePersistableUriPermission(
-                    it,
-                    Intent.FLAG_GRANT_READ_URI_PERMISSION,
-                )
-            } catch (_: Exception) {}
-
-            openEditor(type = NoteType.MEDIA, initialImageUri = it.toString())
+            lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                val persistentUri = try {
+                    com.example.nomemo.media.InternalMediaManager.persistImageToInternalStorage(this@MainActivity, it)
+                } catch (_: Exception) {
+                    it.toString()
+                }
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    openEditor(type = NoteType.MEDIA, initialImageUri = persistentUri)
+                }
+            }
         }
     }
 

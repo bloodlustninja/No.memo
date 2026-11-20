@@ -616,7 +616,7 @@ fun StringBoardScreen(
                     Spacer(modifier = Modifier.height(4.dp * scale))
 
                     // Optional Image Preview if note is MEDIA or has imageUri
-                    val previewImage = note.imageUri ?: note.imageUris.firstOrNull()
+                    val previewImage = note.imageUri ?: note.imageUris.firstOrNull() ?: note.linkThumbnailUrl
                     if (!previewImage.isNullOrBlank()) {
                         AsyncImage(
                             model = previewImage,
@@ -633,7 +633,7 @@ fun StringBoardScreen(
 
                     // Title
                     Text(
-                        text = note.title.ifBlank { "UNTITLED" }.uppercase(),
+                        text = note.title.ifBlank { note.linkTitle ?: "UNTITLED" }.uppercase(),
                         fontFamily = FontFamily.Monospace,
                         fontSize = 11.sp * scale,
                         fontWeight = FontWeight.Bold,

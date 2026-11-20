@@ -69,11 +69,28 @@ class MainViewModel @JvmOverloads constructor(
                 }
                 generatedId = target.id
             } else {
+                val rawCombined = "$subject $text"
+                val url = com.example.nomemo.preview.LinkPreviewResolver.extractFirstUrl(rawCombined)
+                var previewTitle: String? = null
+                var previewThumbnail: String? = null
+                if (url != null) {
+                    try {
+                        val resolved = com.example.nomemo.preview.LinkPreviewResolver.resolve(url)
+                        if (resolved != null) {
+                            previewTitle = resolved.title
+                            previewThumbnail = resolved.thumbnailUrl
+                        }
+                    } catch (_: Exception) {}
+                }
+
+                val finalTitle = subject.ifBlank { previewTitle ?: "" }
                 val newNote = Note(
-                    title = subject,
+                    title = finalTitle,
                     body = text,
                     boardOnly = false,
                     isOnBoard = false,
+                    linkTitle = previewTitle,
+                    linkThumbnailUrl = previewThumbnail,
                     timestamp = System.currentTimeMillis(),
                 )
                 generatedId = repository.insertNote(newNote)
@@ -88,16 +105,22 @@ class MainViewModel @JvmOverloads constructor(
 
     fun persistSharedMedia(uri: String, caption: String = "", targetNoteId: Long = -1L) {
         viewModelScope.launch(Dispatchers.IO) {
+            val persistentUri = try {
+                val parsed = android.net.Uri.parse(uri)
+                com.example.nomemo.media.InternalMediaManager.persistImageToInternalStorage(getApplication(), parsed)
+            } catch (_: Exception) {
+                uri
+            }
             if (targetNoteId > 0) {
                 val note = repository.getNoteById(targetNoteId)
                 if (note != null) {
-                    val updatedUris = note.imageUris + uri
+                    val updatedUris = note.imageUris + persistentUri
                     val updatedBody = if (caption.isNotBlank()) {
                         if (note.body.isBlank()) caption else "${note.body}\n$caption"
                     } else note.body
                     repository.updateNote(
                         note.copy(
-                            imageUri = note.imageUri ?: uri,
+                            imageUri = note.imageUri ?: persistentUri,
                             imageUris = updatedUris,
                             body = updatedBody,
                             type = NoteType.MEDIA,
@@ -111,8 +134,8 @@ class MainViewModel @JvmOverloads constructor(
                 title = if (caption.isNotBlank()) caption.take(24).uppercase() else "SHARED MEDIA",
                 body = caption,
                 type = NoteType.MEDIA,
-                imageUri = uri,
-                imageUris = listOf(uri),
+                imageUri = persistentUri,
+                imageUris = listOf(persistentUri),
                 timestamp = System.currentTimeMillis(),
             )
             repository.insertNote(newNote)
@@ -220,12 +243,18 @@ class MainViewModel @JvmOverloads constructor(
 
     fun createBoardPhotoCard(uri: String) {
         viewModelScope.launch(Dispatchers.IO) {
+            val persistentUri = try {
+                val parsed = android.net.Uri.parse(uri)
+                com.example.nomemo.media.InternalMediaManager.persistImageToInternalStorage(getApplication(), parsed)
+            } catch (_: Exception) {
+                uri
+            }
             val note = Note(
                 title = "PINNED PHOTO",
                 body = "",
                 type = NoteType.MEDIA,
-                imageUri = uri,
-                imageUris = listOf(uri),
+                imageUri = persistentUri,
+                imageUris = listOf(persistentUri),
                 isOnBoard = true,
                 boardOnly = true,
                 timestamp = System.currentTimeMillis()
@@ -250,6 +279,10 @@ class MainViewModel @JvmOverloads constructor(
 
     fun permanentlyDeleteBoardNote(note: Note) {
         viewModelScope.launch(Dispatchers.IO) {
+            com.example.nomemo.media.InternalMediaManager.deleteInternalImage(getApplication(), note.imageUri)
+            note.imageUris.forEach {
+                com.example.nomemo.media.InternalMediaManager.deleteInternalImage(getApplication(), it)
+            }
             val allBoard = repository.getBoardNotes().first()
             allBoard.forEach { other ->
                 if (other.linkedNoteIds.contains(note.id)) {

@@ -5,14 +5,39 @@ import androidx.glance.appwidget.updateAll
 import com.example.nomemo.data.db.AppDatabase
 import com.example.nomemo.data.db.NoteDao
 import com.example.nomemo.data.entity.Note
+import com.example.nomemo.media.InternalMediaManager
 import com.example.nomemo.mirror.MarkdownMirrorManager
+import com.example.nomemo.preview.LinkPreviewResolver
 import com.example.nomemo.widget.NothingBentoGlanceWidget
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.launch
 
 class NoteRepository(
     private val noteDao: NoteDao,
     private val context: Context? = null,
 ) {
+
+    private fun triggerAsyncLinkPreview(note: Note) {
+        if (note.linkThumbnailUrl != null) return
+        val rawText = "${note.title} ${note.body}"
+        val url = LinkPreviewResolver.extractFirstUrl(rawText) ?: return
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val preview = LinkPreviewResolver.resolve(url)
+                if (preview != null && (!preview.thumbnailUrl.isNullOrBlank() || !preview.title.isNullOrBlank())) {
+                    val current = noteDao.getNoteById(note.id) ?: return@launch
+                    val updated = current.copy(
+                        linkTitle = current.linkTitle ?: preview.title,
+                        linkThumbnailUrl = current.linkThumbnailUrl ?: preview.thumbnailUrl,
+                    )
+                    noteDao.updateNote(updated)
+                    syncWidgetsAndMirror(updated)
+                }
+            } catch (_: Exception) {}
+        }
+    }
 
     private suspend fun syncWidgetsAndMirror(note: Note? = null, isDelete: Boolean = false) {
         val ctx = context ?: AppDatabase.appContext
@@ -24,6 +49,8 @@ class NoteRepository(
             if (note != null) {
                 if (isDelete) {
                     MarkdownMirrorManager.deleteNoteFile(ctx, note)
+                    InternalMediaManager.deleteInternalImage(ctx, note.imageUri)
+                    note.imageUris.forEach { InternalMediaManager.deleteInternalImage(ctx, it) }
                 } else {
                     MarkdownMirrorManager.syncNote(ctx, note)
                 }
@@ -47,13 +74,16 @@ class NoteRepository(
 
     suspend fun insertNote(note: Note): Long {
         val id = noteDao.insertNote(note)
-        syncWidgetsAndMirror(note.copy(id = id))
+        val inserted = note.copy(id = id)
+        syncWidgetsAndMirror(inserted)
+        triggerAsyncLinkPreview(inserted)
         return id
     }
 
     suspend fun updateNote(note: Note) {
         noteDao.updateNote(note)
         syncWidgetsAndMirror(note)
+        triggerAsyncLinkPreview(note)
     }
 
     suspend fun deleteNote(note: Note) {

@@ -36,6 +36,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -145,7 +146,7 @@ fun BentoCardComposable(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     KineticDotMatrixText(
-                        text = if (note.isLocked && !isUnlockedLocally) "LOCKED NOTE" else note.title.ifBlank { "UNTITLED" }.uppercase(),
+                        text = if (note.isLocked && !isUnlockedLocally) "LOCKED NOTE" else note.title.ifBlank { note.linkTitle ?: "UNTITLED" }.uppercase(),
                         fontFamily = FontFamily.Monospace,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
@@ -283,6 +284,26 @@ fun BentoCardComposable(
                         )
                     }
                 } else {
+                    // Compact Link Preview Thumbnail Strip (when present and not glyph locked)
+                    if (!note.linkThumbnailUrl.isNullOrBlank() && (!note.isLocked || isUnlockedLocally)) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .border(1.dp, Color(0xFF262626), RoundedCornerShape(8.dp))
+                                .background(Color(0xFF161616)),
+                        ) {
+                            AsyncImage(
+                                model = note.linkThumbnailUrl,
+                                contentDescription = "Link Preview Thumbnail",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                        }
+                    }
+
                     // Body text preview
                     if (note.body.isNotBlank() && note.type != NoteType.CHECKLIST) {
                         Spacer(modifier = Modifier.height(6.dp))

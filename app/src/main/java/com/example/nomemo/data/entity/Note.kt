@@ -40,6 +40,8 @@ data class Note(
     val boardX: Float = 0f,
     val boardY: Float = 0f,
     val linkedNoteIds: List<Long> = emptyList(),
+    val linkTitle: String? = null,
+    val linkThumbnailUrl: String? = null,
 ) {
     val content: String get() = body
 }
