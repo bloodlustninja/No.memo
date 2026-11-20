@@ -1,11 +1,5 @@
 package com.example.nomemo.ui.compose
 
-import android.os.Build
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -20,8 +14,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
@@ -36,7 +30,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -49,6 +42,8 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.example.nomemo.data.entity.Note
 import com.example.nomemo.data.entity.NoteType
 
@@ -57,6 +52,7 @@ import com.example.nomemo.data.entity.NoteType
  *
  * Summons an instant specular frosted card directly over the dashboard with 0ms launch delay,
  * auto-detects tags (#tag), and persists directly into Room database on save.
+ * Uses a dedicated Dialog with statusBarsPadding() and imePadding() to prevent system insets overlap.
  */
 @Composable
 fun FlashNoteOverlay(
@@ -86,42 +82,29 @@ fun FlashNoteOverlay(
         regex.findAll(combined).map { it.groupValues[1].lowercase() }.distinct().toList()
     }
 
-    val wordCount = remember(body) {
-        if (body.isBlank()) 0 else body.trim().split("\\s+".toRegex()).size
-    }
-
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .clickable { onDismiss() }
-            .imePadding(),
-        contentAlignment = Alignment.BottomCenter,
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false,
+        ),
     ) {
-        // LAYER 1: 30dp Backdrop Blur
         Box(
-            modifier = Modifier
+            modifier = modifier
                 .fillMaxSize()
-                .then(
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                        Modifier.blur(30.dp)
-                    } else {
-                        Modifier
-                    },
-                )
-                .background(if (LocalIsDarkTheme.current) Color(0xCC000000) else Color(0xCCEBEBEF)),
-        )
-
-        // LAYER 2: Frosted Bento Scratchpad
-        AnimatedVisibility(
-            visible = isVisible,
-            enter = fadeIn() + slideInVertically { it },
-            exit = fadeOut() + slideOutVertically { it },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 24.dp)
-                .clickable(enabled = false) {}, // Block clicks from closing
+                .background(Color(0xCC000000))
+                .clickable { onDismiss() }
+                .statusBarsPadding()
+                .imePadding()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            contentAlignment = Alignment.Center,
         ) {
-            FrostedBentoCard(cornerRadius = 24.dp) {
+            FrostedBentoCard(
+                cornerRadius = 24.dp,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(enabled = false) {}, // Block clicks from dismissing
+            ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -257,19 +240,12 @@ fun FlashNoteOverlay(
                         Spacer(modifier = Modifier.height(10.dp))
                     }
 
-                    // Bottom Bar: Telemetry + Save Action
+                    // Bottom Bar: Clean White CAPTURE Pill aligned to bottom-right
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
+                        horizontalArrangement = Arrangement.End,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(
-                            text = "$wordCount WORDS // ${body.length} CHARS",
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 10.sp,
-                            color = NothingThemeColors.textMuted,
-                        )
-
                         // Save Capsule
                         Box(
                             modifier = Modifier
