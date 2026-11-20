@@ -32,6 +32,12 @@ class MainViewModel @JvmOverloads constructor(
 
     private val allActiveNotes = repository.getAllActiveNotes()
 
+    val boardNotes: StateFlow<List<Note>> = repository.getBoardNotes().stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.Eagerly,
+        initialValue = emptyList(),
+    )
+
     init {
         viewModelScope.launch {
             allActiveNotes.collect { notes ->
@@ -41,32 +47,75 @@ class MainViewModel @JvmOverloads constructor(
         }
     }
 
-    fun appendSharedTextToNote(targetNoteId: Long, sharedText: String) {
+    fun persistSharedText(targetNoteId: Long, subject: String = "", text: String): Long {
+        var generatedId = 0L
         viewModelScope.launch(Dispatchers.IO) {
             val notes = repository.getAllActiveNotes().first()
             val target = if (targetNoteId > 0) {
                 notes.firstOrNull { it.id == targetNoteId }
-            } else {
-                notes.firstOrNull { it.isPinned } ?: notes.firstOrNull()
-            }
+            } else null
 
             if (target != null) {
                 if (target.type == NoteType.CHECKLIST) {
                     val updatedItems = target.checklistItems.toMutableList()
-                    updatedItems.add(ChecklistItem(text = sharedText))
+                    val itemText = if (subject.isNotBlank()) "$subject: $text" else text
+                    updatedItems.add(ChecklistItem(text = itemText))
                     repository.updateNote(target.copy(checklistItems = updatedItems, timestamp = System.currentTimeMillis()))
                 } else {
-                    val newBody = if (target.body.isBlank()) sharedText else "${target.body}\n$sharedText"
+                    val line = if (subject.isNotBlank() && target.title.isBlank()) subject else ""
+                    val contentToAppend = if (line.isNotBlank()) "$line\n$text" else text
+                    val newBody = if (target.body.isBlank()) contentToAppend else "${target.body}\n$contentToAppend"
                     repository.updateNote(target.copy(body = newBody, timestamp = System.currentTimeMillis()))
                 }
+                generatedId = target.id
             } else {
                 val newNote = Note(
-                    title = "SHARED NOTE",
-                    body = sharedText,
+                    title = subject,
+                    body = text,
+                    boardOnly = false,
+                    isOnBoard = false,
                     timestamp = System.currentTimeMillis(),
                 )
-                repository.insertNote(newNote)
+                generatedId = repository.insertNote(newNote)
             }
+        }
+        return generatedId
+    }
+
+    fun appendSharedTextToNote(targetNoteId: Long, sharedText: String, subject: String = "") {
+        persistSharedText(targetNoteId, subject, sharedText)
+    }
+
+    fun persistSharedMedia(uri: String, caption: String = "", targetNoteId: Long = -1L) {
+        viewModelScope.launch(Dispatchers.IO) {
+            if (targetNoteId > 0) {
+                val note = repository.getNoteById(targetNoteId)
+                if (note != null) {
+                    val updatedUris = note.imageUris + uri
+                    val updatedBody = if (caption.isNotBlank()) {
+                        if (note.body.isBlank()) caption else "${note.body}\n$caption"
+                    } else note.body
+                    repository.updateNote(
+                        note.copy(
+                            imageUri = note.imageUri ?: uri,
+                            imageUris = updatedUris,
+                            body = updatedBody,
+                            type = NoteType.MEDIA,
+                            timestamp = System.currentTimeMillis()
+                        )
+                    )
+                    return@launch
+                }
+            }
+            val newNote = Note(
+                title = if (caption.isNotBlank()) caption.take(24).uppercase() else "SHARED MEDIA",
+                body = caption,
+                type = NoteType.MEDIA,
+                imageUri = uri,
+                imageUris = listOf(uri),
+                timestamp = System.currentTimeMillis(),
+            )
+            repository.insertNote(newNote)
         }
     }
 
@@ -153,6 +202,61 @@ class MainViewModel @JvmOverloads constructor(
     fun updateNote(note: Note) {
         viewModelScope.launch {
             repository.updateNote(note)
+        }
+    }
+
+    fun createBoardTextCard(title: String, body: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val note = Note(
+                title = title.ifBlank { "BOARD NOTE" },
+                body = body,
+                isOnBoard = true,
+                boardOnly = true,
+                timestamp = System.currentTimeMillis()
+            )
+            repository.insertNote(note)
+        }
+    }
+
+    fun createBoardPhotoCard(uri: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val note = Note(
+                title = "PINNED PHOTO",
+                body = "",
+                type = NoteType.MEDIA,
+                imageUri = uri,
+                imageUris = listOf(uri),
+                isOnBoard = true,
+                boardOnly = true,
+                timestamp = System.currentTimeMillis()
+            )
+            repository.insertNote(note)
+        }
+    }
+
+    fun toggleNoteOnBoard(noteId: Long, onBoard: Boolean) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val note = repository.getNoteById(noteId) ?: return@launch
+            repository.updateNote(note.copy(isOnBoard = onBoard))
+        }
+    }
+
+    fun removeNoteFromBoard(noteId: Long) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val note = repository.getNoteById(noteId) ?: return@launch
+            repository.updateNote(note.copy(isOnBoard = false))
+        }
+    }
+
+    fun permanentlyDeleteBoardNote(note: Note) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val allBoard = repository.getBoardNotes().first()
+            allBoard.forEach { other ->
+                if (other.linkedNoteIds.contains(note.id)) {
+                    repository.updateNote(other.copy(linkedNoteIds = other.linkedNoteIds - note.id))
+                }
+            }
+            repository.deleteNote(note)
         }
     }
 

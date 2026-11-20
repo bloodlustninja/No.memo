@@ -7,11 +7,16 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.lifecycle.lifecycleScope
 import com.example.nomemo.data.db.AppDatabase
 import com.example.nomemo.data.entity.Note
@@ -59,33 +64,55 @@ class NoteEditorActivity : AppCompatActivity() {
         val initialImageUri = intent.getStringExtra(EXTRA_INITIAL_IMAGE_URI)
 
         setContent {
-            var activeNote by remember {
-                mutableStateOf(
-                    Note(
-                        id = if (noteId > 0) noteId else 0L,
+            var activeNote by remember { mutableStateOf<Note?>(null) }
+            var isLoaded by remember { mutableStateOf(false) }
+
+            LaunchedEffect(noteId) {
+                if (noteId > 0L) {
+                    val loaded = repository.getNoteById(noteId)
+                    if (loaded != null) {
+                        activeNote = loaded
+                    } else {
+                        activeNote = Note(
+                            id = noteId,
+                            title = initialTitle,
+                            body = initialBody,
+                            type = initialType,
+                            imageUris = if (!initialImageUri.isNullOrBlank()) listOf(initialImageUri) else emptyList(),
+                            imageUri = initialImageUri,
+                            timestamp = System.currentTimeMillis(),
+                        )
+                    }
+                } else {
+                    activeNote = Note(
+                        id = 0L,
                         title = initialTitle,
                         body = initialBody,
                         type = initialType,
                         imageUris = if (!initialImageUri.isNullOrBlank()) listOf(initialImageUri) else emptyList(),
+                        imageUri = initialImageUri,
                         timestamp = System.currentTimeMillis(),
-                    ),
-                )
-            }
-
-            LaunchedEffect(noteId) {
-                if (noteId > 0L) {
-                    repository.getNoteById(noteId)?.let { loaded ->
-                        activeNote = loaded
-                    }
+                    )
                 }
+                isLoaded = true
             }
 
+            if (!isLoaded || activeNote == null) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(ComposeColor(0xFF000000)),
+                )
+                return@setContent
+            }
+
+            val note = activeNote!!
             NothingNoteEditorScreen(
-                initialNote = activeNote,
+                initialNote = note,
                 onSaveNote = { noteToSave ->
                     lifecycleScope.launch {
                         val savedId = repository.insertNote(noteToSave)
-                        if (activeNote.id == 0L && savedId > 0L) {
+                        if (activeNote?.id == 0L && savedId > 0L) {
                             activeNote = noteToSave.copy(id = savedId)
                         }
                     }

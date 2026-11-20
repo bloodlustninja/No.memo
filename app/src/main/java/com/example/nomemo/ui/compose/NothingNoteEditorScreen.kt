@@ -3,6 +3,7 @@ package com.example.nomemo.ui.compose
 import android.Manifest
 import android.content.pm.PackageManager
 import android.net.Uri
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -115,8 +116,17 @@ fun NothingNoteEditorScreen(
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
 
-    var title by remember { mutableStateOf(initialNote.title) }
-    var body by remember { mutableStateOf(initialNote.body) }
+    var title by remember(initialNote.id) { mutableStateOf(initialNote.title) }
+    var body by remember(initialNote.id) { mutableStateOf(initialNote.body) }
+
+    LaunchedEffect(initialNote.id, initialNote.title, initialNote.body) {
+        if (title.isBlank() && initialNote.title.isNotBlank()) {
+            title = initialNote.title
+        }
+        if (body.isBlank() && initialNote.body.isNotBlank()) {
+            body = initialNote.body
+        }
+    }
     var isPinned by remember { mutableStateOf(initialNote.isPinned) }
     var isLocked by remember { mutableStateOf(initialNote.isLocked) }
     var isBurn by remember { mutableStateOf(initialNote.isBurn) }
@@ -192,6 +202,14 @@ fun NothingNoteEditorScreen(
     // Auto-save debounced effect
     LaunchedEffect(title, body, isPinned, isLocked, isBurn, burnExpiresAt, noteType, imageUris.size, checklistItems.toList(), audioUri) {
         delay(350L)
+        val isTitleBlank = title.trim().isBlank()
+        val isBodyBlank = body.trim().isBlank()
+        val hasImages = imageUris.isNotEmpty() || initialNote.imageUri != null
+        val hasChecklist = checklistItems.isNotEmpty()
+        val hasAudio = audioUri != null
+        if (isTitleBlank && isBodyBlank && !hasImages && !hasChecklist && !hasAudio) {
+            return@LaunchedEffect
+        }
         val extractedTags = run {
             val regex = "#([a-zA-Z0-9_]+)".toRegex()
             val combined = "$title $body"
@@ -218,6 +236,53 @@ fun NothingNoteEditorScreen(
         onSaveNote(updatedNote)
     }
 
+    // Safe Exit Handler: never deletes notes if body/URL is present
+    val handleExit: () -> Unit = {
+        val isTitleBlank = title.trim().isBlank()
+        val isBodyBlank = body.trim().isBlank()
+        val hasImages = imageUris.isNotEmpty() || initialNote.imageUri != null
+        val hasChecklist = checklistItems.isNotEmpty()
+        val hasAudio = audioUri != null
+
+        // A note must ONLY be auto-deleted on exit if BOTH title.isBlank() AND content.isBlank() AND imageUri == null
+        val isCompletelyEmpty = isTitleBlank && isBodyBlank && !hasImages && !hasChecklist && !hasAudio
+
+        if (isCompletelyEmpty) {
+            if (initialNote.id > 0L) {
+                onDeleteNote(initialNote.id)
+            }
+        } else {
+            val extractedTags = run {
+                val regex = "#([a-zA-Z0-9_]+)".toRegex()
+                val combined = "$title $body"
+                regex.findAll(combined).map { it.groupValues[1].lowercase() }.distinct().toList()
+            }
+            val noteToSave = initialNote.copy(
+                title = title,
+                body = body,
+                isPinned = isPinned,
+                isLocked = isLocked,
+                isBurn = isBurn,
+                burnExpiresAt = burnExpiresAt,
+                type = if (checklistItems.isNotEmpty() && noteType != NoteType.AUDIO) NoteType.CHECKLIST else noteType,
+                imageUris = imageUris.toList(),
+                checklistItems = checklistItems.toList(),
+                audioUri = audioUri,
+                audioDurationMs = audioDurationMs,
+                audioWaveform = audioWaveform,
+                tags = extractedTags,
+                revisions = revisions.toList(),
+                timestamp = System.currentTimeMillis(),
+            )
+            onSaveNote(noteToSave)
+        }
+        onBackClick()
+    }
+
+    BackHandler {
+        handleExit()
+    }
+
     NothingAppTheme(isDarkTheme = isDarkTheme) {
         Box(
             modifier = modifier
@@ -241,7 +306,7 @@ fun NothingNoteEditorScreen(
                             .clip(CircleShape)
                             .tactilePress {
                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                onBackClick()
+                                handleExit()
                             },
                         contentAlignment = Alignment.Center,
                     ) {

@@ -13,14 +13,17 @@ import kotlinx.coroutines.flow.Flow
 @JvmSuppressWildcards
 interface NoteDao {
 
-    @Query("SELECT * FROM notes WHERE isArchived = 0 ORDER BY isPinned DESC, timestamp DESC")
+    @Query("SELECT * FROM notes WHERE isArchived = 0 AND boardOnly = 0 ORDER BY isPinned DESC, timestamp DESC")
     fun getAllActiveNotes(): Flow<List<Note>>
 
-    @Query("SELECT * FROM notes WHERE isArchived = 0 AND type = :type ORDER BY isPinned DESC, timestamp DESC")
+    @Query("SELECT * FROM notes WHERE isArchived = 0 AND boardOnly = 0 AND type = :type ORDER BY isPinned DESC, timestamp DESC")
     fun getNotesByType(type: String): Flow<List<Note>>
 
-    @Query("SELECT * FROM notes WHERE isArchived = 0 AND (title LIKE '%' || :query || '%' OR body LIKE '%' || :query || '%') ORDER BY isPinned DESC, timestamp DESC")
+    @Query("SELECT * FROM notes WHERE isArchived = 0 AND boardOnly = 0 AND (title LIKE '%' || :query || '%' OR body LIKE '%' || :query || '%') ORDER BY isPinned DESC, timestamp DESC")
     fun searchNotes(query: String): Flow<List<Note>>
+
+    @Query("SELECT * FROM notes WHERE isArchived = 0 AND isOnBoard = 1 ORDER BY timestamp DESC")
+    fun getBoardNotes(): Flow<List<Note>>
 
     @Query("SELECT * FROM notes WHERE id = :id")
     fun getNoteByIdFlow(id: Long): Flow<Note?>

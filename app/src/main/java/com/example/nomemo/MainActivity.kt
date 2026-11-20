@@ -3,6 +3,7 @@ package com.example.nomemo
 import android.content.Intent
 import android.graphics.Color
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.SystemBarStyle
@@ -14,17 +15,22 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.lifecycle.lifecycleScope
 import com.example.nomemo.data.entity.NoteType
 import com.example.nomemo.data.pref.PreferencesManager
 import com.example.nomemo.ui.compose.MainNotesScreen
 import com.example.nomemo.ui.editor.NoteEditorActivity
 import com.example.nomemo.ui.settings.SettingsActivity
 import com.example.nomemo.ui.viewmodel.MainViewModel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
 
     private val viewModel: MainViewModel by viewModels()
     private lateinit var prefsManager: PreferencesManager
+    private val hudMessage = MutableStateFlow<String?>(null)
 
     private val pickImageLauncher = registerForActivityResult(
         ActivityResultContracts.GetContent(),
@@ -72,17 +78,27 @@ class MainActivity : AppCompatActivity() {
 
         setContent {
             val notes by viewModel.notesList.collectAsState()
+            val boardNotes by viewModel.boardNotes.collectAsState()
             val archivedNotes by viewModel.archivedNotes.collectAsState()
             val availableTags by viewModel.availableTags.collectAsState()
             val activeTag by viewModel.activeTagFilter.collectAsState()
+            val hudMsg by hudMessage.collectAsState()
 
             MainNotesScreen(
                 notesList = notes,
+                boardNotes = boardNotes,
+                hudMessage = hudMsg,
                 archivedNotes = archivedNotes,
                 availableTags = availableTags,
                 activeTag = activeTag,
                 onNoteClick = { note ->
-                    openEditor(type = note.type, noteId = note.id)
+                    openEditor(
+                        type = note.type,
+                        noteId = note.id,
+                        initialTitle = note.title,
+                        initialBody = note.body,
+                        initialImageUri = note.imageUri ?: note.imageUris.firstOrNull(),
+                    )
                 },
                 onNoteDelete = { note ->
                     viewModel.deleteNote(note)
@@ -124,6 +140,29 @@ class MainActivity : AppCompatActivity() {
                 },
                 onUnlinkNotes = { id1, id2 ->
                     viewModel.unlinkNotes(id1, id2)
+                },
+                onCreateBoardCard = { title, body ->
+                    viewModel.createBoardTextCard(title, body)
+                    showHudNotification("CARD PINNED // BOARD")
+                    Toast.makeText(this, "PINNED TO BOARD", Toast.LENGTH_SHORT).show()
+                },
+                onCreateBoardPhoto = { uri ->
+                    viewModel.createBoardPhotoCard(uri.toString())
+                    showHudNotification("PHOTO PINNED // BOARD")
+                    Toast.makeText(this, "PHOTO PINNED TO BOARD", Toast.LENGTH_SHORT).show()
+                },
+                onToggleNoteOnBoard = { id, onBoard ->
+                    viewModel.toggleNoteOnBoard(id, onBoard)
+                },
+                onRemoveFromBoard = { id ->
+                    viewModel.removeNoteFromBoard(id)
+                    showHudNotification("REMOVED FROM BOARD")
+                    Toast.makeText(this, "REMOVED FROM BOARD", Toast.LENGTH_SHORT).show()
+                },
+                onPermanentDeleteBoardNote = { note ->
+                    viewModel.permanentlyDeleteBoardNote(note)
+                    showHudNotification("NOTE SHREDDED")
+                    Toast.makeText(this, "BOARD ITEM PERMANENTLY DELETED", Toast.LENGTH_SHORT).show()
                 },
                 onDockTextClick = {
                     // Handled inside MainNotesScreen via Flash Note overlay
@@ -175,17 +214,67 @@ class MainActivity : AppCompatActivity() {
         handleIncomingIntent(intent)
     }
 
+    private fun showHudNotification(msg: String) {
+        lifecycleScope.launch {
+            hudMessage.value = msg
+            delay(2400)
+            if (hudMessage.value == msg) {
+                hudMessage.value = null
+            }
+        }
+    }
+
     private fun handleIncomingIntent(intent: Intent?) {
         if (intent == null) return
-        if (intent.action == com.example.nomemo.widget.NothingBentoWidgetProvider.ACTION_VOICE_CAPTURE) {
+        val action = intent.action
+        if (action == com.example.nomemo.widget.NothingBentoWidgetProvider.ACTION_VOICE_CAPTURE) {
+            intent.action = null
+            setIntent(intent)
             openEditor(type = NoteType.AUDIO)
-        } else if (intent.action == Intent.ACTION_SEND && (intent.type?.startsWith("text/") == true || intent.hasExtra(Intent.EXTRA_TEXT))) {
-            val sharedText = intent.getStringExtra(Intent.EXTRA_TEXT) ?: intent.getStringExtra(Intent.EXTRA_STREAM)
+            return
+        }
+
+        if (action == Intent.ACTION_SEND) {
+            val mimeType = intent.type ?: ""
             val targetNoteId = intent.getLongExtra(com.example.nomemo.share.DirectShareManager.EXTRA_TARGET_NOTE_ID, -1L)
-            if (!sharedText.isNullOrBlank()) {
-                viewModel.appendSharedTextToNote(targetNoteId, sharedText)
-                Toast.makeText(this, "APPENDED TO NOTE", Toast.LENGTH_SHORT).show()
+            val extraText = intent.getStringExtra(Intent.EXTRA_TEXT).orEmpty()
+            val extraSubject = intent.getStringExtra(Intent.EXTRA_SUBJECT).orEmpty()
+
+            // Handle image/* or EXTRA_STREAM
+            val imageUri: Uri? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
+            } else {
+                @Suppress("DEPRECATION")
+                intent.getParcelableExtra(Intent.EXTRA_STREAM) as? Uri
             }
+
+            if (imageUri != null || mimeType.startsWith("image/")) {
+                val uriToPersist = imageUri ?: intent.data
+                if (uriToPersist != null) {
+                    try {
+                        contentResolver.takePersistableUriPermission(
+                            uriToPersist,
+                            Intent.FLAG_GRANT_READ_URI_PERMISSION,
+                        )
+                    } catch (_: Exception) {}
+
+                    viewModel.persistSharedMedia(
+                        uri = uriToPersist.toString(),
+                        caption = extraText.ifBlank { extraSubject },
+                        targetNoteId = targetNoteId,
+                    )
+                    showHudNotification("SHARED MEDIA PERSISTED")
+                    Toast.makeText(this, "SHARED MEDIA PERSISTED", Toast.LENGTH_SHORT).show()
+                }
+            } else if (extraText.isNotBlank() || extraSubject.isNotBlank()) {
+                viewModel.persistSharedText(targetNoteId = targetNoteId, subject = extraSubject, text = extraText)
+                showHudNotification("SHARED LINK PERSISTED")
+                Toast.makeText(this, "SHARED LINK PERSISTED", Toast.LENGTH_SHORT).show()
+            }
+
+            // Clear intent action so it never disappears when opened or duplicates on rotation
+            intent.action = null
+            setIntent(intent)
         }
     }
 

@@ -77,6 +77,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import com.example.nomemo.sensor.NothingShakeDetector
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -121,6 +122,13 @@ fun MainNotesScreen(
     onUpdateNotePosition: (Long, Float, Float) -> Unit = { _, _, _ -> },
     onLinkNotes: (Long, Long) -> Unit = { _, _ -> },
     onUnlinkNotes: (Long, Long) -> Unit = { _, _ -> },
+    boardNotes: List<Note> = emptyList(),
+    hudMessage: String? = null,
+    onCreateBoardCard: (String, String) -> Unit = { _, _ -> },
+    onCreateBoardPhoto: (android.net.Uri) -> Unit = {},
+    onToggleNoteOnBoard: (Long, Boolean) -> Unit = { _, _ -> },
+    onRemoveFromBoard: (Long) -> Unit = {},
+    onPermanentDeleteBoardNote: (Note) -> Unit = {},
     onDockTextClick: () -> Unit,
     onDockChecklistClick: () -> Unit,
     onDockImageClick: () -> Unit,
@@ -958,7 +966,8 @@ fun MainNotesScreen(
                         scaleOut(targetScale = 0.92f, animationSpec = spring(dampingRatio = 0.85f, stiffness = 420f)),
             ) {
                 StringBoardScreen(
-                    notes = notesList,
+                    notes = boardNotes,
+                    homeNotes = notesList,
                     onOpenNote = { note ->
                         if (note.isLocked) {
                             lockedNoteForAuth = note
@@ -970,6 +979,11 @@ fun MainNotesScreen(
                     onUpdateNotePosition = onUpdateNotePosition,
                     onLinkNotes = onLinkNotes,
                     onUnlinkNotes = onUnlinkNotes,
+                    onCreateBoardCard = onCreateBoardCard,
+                    onCreateBoardPhoto = onCreateBoardPhoto,
+                    onToggleNoteOnBoard = onToggleNoteOnBoard,
+                    onRemoveFromBoard = onRemoveFromBoard,
+                    onPermanentDelete = onPermanentDeleteBoardNote,
                 )
             }
 
@@ -986,6 +1000,46 @@ fun MainNotesScreen(
                     lockedNoteForAuth = null
                 },
             )
+
+            // Custom Nothing HUD Notification Pill
+            AnimatedVisibility(
+                visible = hudMessage != null,
+                enter = fadeIn(tween(180)) + slideInVertically(initialOffsetY = { -it }),
+                exit = fadeOut(tween(180)) + slideOutVertically(targetOffsetY = { -it }),
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .statusBarsPadding()
+                    .padding(top = 16.dp)
+                    .zIndex(100f),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(Color(0xFF000000))
+                        .border(1.dp, Color(0xFFD71921), RoundedCornerShape(20.dp))
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(6.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFFD71921)),
+                        )
+                        Text(
+                            text = hudMessage ?: "",
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            letterSpacing = 1.sp,
+                        )
+                    }
+                }
+            }
         }
     }
 }

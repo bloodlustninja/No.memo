@@ -24,6 +24,9 @@ data class Note(
     val isLocked: Boolean = false,
     val type: String = NoteType.NOTE,
     val imageUris: List<String> = emptyList(),
+    val imageUri: String? = null,
+    val isOnBoard: Boolean = false,
+    val boardOnly: Boolean = false,
     val checklistItems: List<ChecklistItem> = emptyList(),
     val audioUri: String? = null,
     val audioDurationMs: Long = 0L,
@@ -34,7 +37,9 @@ data class Note(
     val reminderTimestamp: Long? = null,
     val isBurn: Boolean = false,
     val burnExpiresAt: Long? = null,
-    val boardX: Float? = null,
-    val boardY: Float? = null,
+    val boardX: Float = 0f,
+    val boardY: Float = 0f,
     val linkedNoteIds: List<Long> = emptyList(),
-)
+) {
+    val content: String get() = body
+}

@@ -33,6 +33,8 @@ class NoteRepository(
 
     fun getAllActiveNotes(): Flow<List<Note>> = noteDao.getAllActiveNotes()
 
+    fun getBoardNotes(): Flow<List<Note>> = noteDao.getBoardNotes()
+
     fun getNotesByType(type: String): Flow<List<Note>> = noteDao.getNotesByType(type)
 
     fun searchNotes(query: String): Flow<List<Note>> = noteDao.searchNotes(query)
